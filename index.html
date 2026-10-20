@@ -4,10 +4,10 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body,#app,#stage,#panel,button,select,label,output{user-select:none!important;-webkit-user-select:none!important;-webkit-touch-callout:none}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101116;color:#f1ede9;font:14px system-ui;overscroll-behavior:none;user-select:none}
 #app{height:100dvh;display:flex;flex-direction:column}header{height:58px;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}h1{font-size:17px;margin:0}#version{font-size:10px;color:#aaa6a4}#status{font-size:11px;color:#aaa6a4;text-align:right;max-width:52%;font-weight:400}
 #stage{position:relative;flex:1;min-height:120px;overflow:hidden;touch-action:none}canvas{display:block;width:100%;height:100%;touch-action:none}#hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;pointer-events:none;font-size:11px;color:#b9b4b1}
-#panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:54px;overflow:hidden}#panel.closed>*:not(#handle){display:none!important}#panel [hidden]{display:none!important}#quickbar{position:absolute;top:12px;left:10px;right:10px;display:flex;gap:7px;z-index:3;pointer-events:none}#quickbar button{pointer-events:auto;min-height:43px;padding:8px 12px;background:#272a33e8;backdrop-filter:blur(12px);box-shadow:0 3px 12px #0005}#quickbar button.active{background:#775b49}#quickbar .spacer{flex:1}#quickExtrude{display:none}body.model-mode #quickExtrude{display:block}.tools{grid-template-columns:repeat(4,minmax(0,1fr))!important}.tools button{padding:9px 3px;font-size:12px}#panel:not(.closed){max-height:min(55dvh,510px)}#handle{position:sticky;top:0;z-index:2;background:#1b1d24!important}
+#panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:54px;overflow:hidden}#panel.closed>*:not(#handle){display:none!important}#panel [hidden]{display:none!important}#quickbar{position:absolute;top:12px;left:10px;right:10px;display:flex;gap:7px;z-index:3;pointer-events:none}#quickbar button{pointer-events:auto;min-height:43px;padding:8px 12px;background:#272a33e8;backdrop-filter:blur(12px);box-shadow:0 3px 12px #0005}#quickbar button.active{background:#775b49}#quickbar .spacer{flex:1}#quickExtrude,#transformBar{display:none}body.model-mode #quickExtrude{display:block}body.model-mode #transformBar{display:flex}#transformBar{gap:4px}#transformBar button{font-size:12px;padding:8px 7px!important}#transformBar button.active{background:#775b49}.tools{grid-template-columns:repeat(4,minmax(0,1fr))!important}.tools button{padding:9px 3px;font-size:12px}#panel:not(.closed){max-height:min(55dvh,510px)}#handle{position:sticky;top:0;z-index:2;background:#1b1d24!important}
 button,select{font:inherit;color:#f1ede9;background:#30333d;border:1px solid #4b4e59;border-radius:11px;padding:10px 6px;touch-action:manipulation}button.active{background:#775b49;border-color:#d6ac88}button:disabled{opacity:.45}#handle{display:block;width:100%;background:transparent;border:0;color:#e4b994;padding:5px 0 11px;font-weight:700}
 .tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1;min-width:0}#layers{display:flex;gap:6px;overflow-x:auto;padding:9px 0}#layers button{white-space:nowrap;flex:none;padding:8px 10px}label{display:flex;justify-content:space-between;margin:11px 0 3px}input[type=range]{width:100%;accent-color:#d4a07a}#projects{max-height:140px;overflow:auto}
-</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.9.2</div></div><div id="status">Starting…</div></header><main id="stage"><div id="quickbar"><button id="quickMode">⬡ Model</button><button id="quickExtrude">⇧ Extrude</button><span class="spacer"></span><button id="quickUndo">↶</button><button id="quickTools">☷ Tools</button></div><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel" class="closed"><button id="handle">⌃ Tools · Tap to expand</button>
+</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.10.0</div></div><div id="status">Starting…</div></header><main id="stage"><div id="quickbar"><button id="quickMode">⬡ Model</button><button id="quickExtrude">⇧ Extrude</button><div id="transformBar"><button data-transform="translate" class="active">↔ Move</button><button data-transform="rotate">⟳ Rotate</button><button data-transform="scale">⤢ Scale</button></div><span class="spacer"></span><button id="quickUndo">↶</button><button id="quickTools">☷ Tools</button></div><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel" class="closed"><button id="handle">⌃ Tools · Tap to expand</button>
 <div class="tools"><button data-tool="add" class="active">＋ Add</button><button data-tool="carve">－ Carve</button><button data-tool="smooth">≈ Smooth</button><button data-tool="crease">⌁ Crease Fix</button><button data-tool="pull">↗ Pull</button><button data-tool="move">✥ Move</button><button data-tool="model">⬡ Model</button></div>
 <div class="row"><button id="mirror">⇄ Mirror: Off</button><select id="mirrorDirection" aria-label="Post Mirror direction"><option value="positive">+X → −X</option><option value="negative">−X → +X</option></select><button id="postmirror">⇥ Symmetrize</button></div>
 <div class="row"><button id="addshape">＋ Shape</button><select id="shape"><option value="sphere">Sphere</option><option value="box">Box</option><option value="cylinder">Cylinder</option><option value="torus">Torus</option></select></div>
@@ -470,7 +470,7 @@ function postMirror(){
 }
 function center(){target.set(0,0,0);camera.position.set(2,1.3,4.2);camera.lookAt(target);drawGizmo();render()}
 // Direct mesh editing: select faces, edges or vertices and drag in the camera plane.
-let editSelection=[],editStart=null;
+let editSelection=[],editStart=null,editTransform='translate';
 const editOverlay=new THREE.Group();scene.add(editOverlay);
 function clearEditOverlay(){while(editOverlay.children.length){const c=editOverlay.children.pop();c.parent=null;c.geometry?.dispose();c.material?.dispose()}}
 function updateEditOverlay(){
@@ -508,11 +508,30 @@ function modelPick(x,y){
 function modelDrag(dx,dy){
  if(!selected||!editSelection.length)return;
  const a=selected.geometry.attributes.position,r=canvas.getBoundingClientRect();
- const factor=2*camera.position.distanceTo(target)*Math.tan(camera.fov*Math.PI/360)/Math.max(1,r.height);
- const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);
- const shift=right.multiplyScalar(dx*factor).addScaledVector(up,-dy*factor);
- shift.applyQuaternion(selected.getWorldQuaternion(new THREE.Quaternion()).invert());
- for(const i of editSelection)a.setXYZ(i,a.getX(i)+shift.x,a.getY(i)+shift.y,a.getZ(i)+shift.z);
+ const center=new THREE.Vector3();
+ for(const i of editSelection)center.add(new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)));
+ center.multiplyScalar(1/editSelection.length);
+ if(editTransform==='translate'){
+  const factor=2*camera.position.distanceTo(target)*Math.tan(camera.fov*Math.PI/360)/Math.max(1,r.height);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);
+  const shift=right.multiplyScalar(dx*factor).addScaledVector(up,-dy*factor);
+  shift.applyQuaternion(selected.getWorldQuaternion(new THREE.Quaternion()).invert());
+  for(const i of editSelection)a.setXYZ(i,a.getX(i)+shift.x,a.getY(i)+shift.y,a.getZ(i)+shift.z);
+ }else if(editTransform==='scale'){
+  const amount=Math.exp((dx-dy)*.009);
+  for(const i of editSelection){
+   const v=new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)).sub(center).multiplyScalar(amount).add(center);
+   a.setXYZ(i,v.x,v.y,v.z)
+  }
+ }else{
+  const axis=new THREE.Vector3(0,0,1).applyQuaternion(camera.quaternion);
+  axis.applyQuaternion(selected.getWorldQuaternion(new THREE.Quaternion()).invert()).normalize();
+  const q=new THREE.Quaternion().setFromAxisAngle(axis,(dx-dy)*.012);
+  for(const i of editSelection){
+   const v=new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)).sub(center).applyQuaternion(q).add(center);
+   a.setXYZ(i,v.x,v.y,v.z)
+  }
+ }
  a.needsUpdate=true;selected.geometry.computeVertexNormals();selected.geometry.computeBoundingSphere();updateEditOverlay();scheduleSave()
 }
 function modelExtrude(){
@@ -548,6 +567,7 @@ function release(e){touches.delete(e.pointerId);pullAnchor=null;previous=null;ge
 canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
 function syncQuickUI(){document.body.classList.toggle('model-mode',tool==='model');$('#quickMode').textContent=tool==='model'?'⬡ Model ✓':'⬡ Model';$('#quickMode').classList.toggle('active',tool==='model');$('#quickExtrude').disabled=!editSelection.length||$('#editMode').value!=='face'}
 document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;$('#modelControls').hidden=tool!=='model';$('#modelControls2').hidden=tool!=='model';editSelection=[];updateEditOverlay();document.querySelectorAll('[data-tool]').forEach(x=>x.classList.toggle('active',x===b));setGizmo('move');syncQuickUI();message(tool==='move'?'Move: 1 finger translate · 2 rotate/scale':'Sculpt mode')});
+document.querySelectorAll('[data-transform]').forEach(b=>b.onclick=()=>{editTransform=b.dataset.transform;document.querySelectorAll('[data-transform]').forEach(x=>x.classList.toggle('active',x===b));message('Quad transform: '+editTransform+' · drag selected geometry')});
 $('#quickMode').onclick=()=>document.querySelector('[data-tool="'+(tool==='model'?'add':'model')+'"]').click();$('#quickExtrude').onclick=()=>modelExtrude();$('#quickUndo').onclick=()=>$('#undo').click();$('#quickTools').onclick=()=>$('#handle').click();
 $('#handle').onclick=()=>{$('#panel').classList.toggle('closed');$('#handle').textContent=$('#panel').classList.contains('closed')?'⌃ Tools · Tap to expand':'⌄ Tools · Tap to collapse'};
 $('#mirror').onclick=()=>{mirror=!mirror;$('#mirror').textContent='⇄ Mirror: '+(mirror?'On':'Off')};
@@ -558,5 +578,5 @@ $('#undo').onclick=()=>{if(!undoStack.length){message('Nothing to undo');return}
 $('#center').onclick=center;$('#new').onclick=()=>{if(!confirm('Start a new sculpture?'))return;checkpoint();for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=[];add('box');center()};
 $('#save').onclick=saveProject;$('#projectsbtn').onclick=listProjects;$('#backup').onclick=()=>{const raw=localStorage.getItem(BACKUP);if(!raw){message('No fuse backup available');return}if(confirm('Restore the layers from before your last fusion?')){checkpoint();restoreData(JSON.parse(raw));scheduleSave();message('Fusion backup restored')}};
 try{const raw=localStorage.getItem(KEY)||localStorage.getItem('mini-clay-current');if(raw){const data=JSON.parse(raw);if(data.layers?.length){if(data.layers[0].translation&&!data.layers[0].position){for(const item of data.layers){item.position=item.translation;item.quaternion=new THREE.Quaternion().setFromEuler(new THREE.Euler(...(item.rotation||[0,0,0]))).toArray()}}restoreData(data)}else add('box')}else add('box')}catch(e){console.error(e);add('box');message('New sculpture ready')}
-center();resize();message('Ready · v2.9.2');
+center();resize();message('Ready · v2.10.0');
 </script></body></html>
