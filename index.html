@@ -96,14 +96,19 @@ const point=hit(x,y);if(!point)return;
 const geo=mesh.geometry,attr=geo.attributes.position,radius=.08+brush*.5,intensity=.002+strength*.012;
 let smoothTargets=null;
 if(tool==='smooth'){
- const neighbors=Array.from({length:attr.count},()=>new Set()),idx=geo.index;
- if(idx){const ids=idx.array;for(let j=0;j<ids.length;j+=3){const a=ids[j],b=ids[j+1],c=ids[j+2];neighbors[a].add(b);neighbors[a].add(c);neighbors[b].add(a);neighbors[b].add(c);neighbors[c].add(a);neighbors[c].add(b)}}
- smoothTargets=neighbors.map((set,i)=>{const p=new THREE.Vector3().fromBufferAttribute(attr,i);if(!set.size)return p;const avg=new THREE.Vector3();for(const j of set)avg.add(new THREE.Vector3().fromBufferAttribute(attr,j));avg.multiplyScalar(1/set.size);return avg});
+ // Smooth welded positions as a unit, so UV seams and cap boundaries cannot split.
+ const groups=new Map(),groupOf=new Array(attr.count),vertices=[];
+ for(let i=0;i<attr.count;i++){const x=attr.getX(i),y=attr.getY(i),z=attr.getZ(i),key=[x,y,z].map(v=>Math.round(v*10000)).join(',');let g=groups.get(key);if(g===undefined){g=vertices.length;groups.set(key,g);vertices.push({ids:[],p:new THREE.Vector3(x,y,z),neighbors:new Set(),normal:new THREE.Vector3()})}vertices[g].ids.push(i);groupOf[i]=g}
+ const idx=geo.index,ids=idx?idx.array:null,faces=ids?ids.length/3:attr.count/3;
+ for(let f=0;f<faces;f++){const a=groupOf[ids?ids[f*3]:f*3],b=groupOf[ids?ids[f*3+1]:f*3+1],c=groupOf[ids?ids[f*3+2]:f*3+2];if(a===b||b===c||a===c)continue;for(const [u,v] of [[a,b],[b,c],[c,a]]){vertices[u].neighbors.add(v);vertices[v].neighbors.add(u)}const A=vertices[a].p,B=vertices[b].p,C=vertices[c].p,n=B.clone().sub(A).cross(C.clone().sub(A));vertices[a].normal.add(n);vertices[b].normal.add(n);vertices[c].normal.add(n)}
+ for(const v of vertices)v.normal.normalize();
+ const targets=vertices.map(v=>{if(v.neighbors.size<3)return v.p.clone();const avg=new THREE.Vector3();for(const j of v.neighbors)avg.add(vertices[j].p);avg.multiplyScalar(1/v.neighbors.size);const delta=avg.sub(v.p);const normalShift=v.normal.clone().multiplyScalar(delta.dot(v.normal));return v.p.clone().add(delta.sub(normalShift).multiplyScalar(.22))});
+ smoothTargets=groupOf.map(g=>targets[g]);
 }
 for(let i=0;i<attr.count;i++){
  local.fromBufferAttribute(attr,i);const dist=local.distanceTo(point);if(dist>radius&&(!mirrorEnabled||local.distanceTo(new THREE.Vector3(-point.x,point.y,point.z))>radius))continue;
  const mirrored=new THREE.Vector3(-point.x,point.y,point.z);const mirrorDist=mirrorEnabled?local.distanceTo(mirrored):Infinity;const fall=Math.pow(1-Math.min(dist,mirrorDist)/radius,2);
- if(tool==='smooth'){local.lerp(smoothTargets[i],Math.min(.45,fall*strength*.38))}
+ if(tool==='smooth'){local.lerp(smoothTargets[i],Math.min(.28,fall*strength*.32))}
  else{const outward=local.clone().normalize();local.addScaledVector(outward,(tool==='add'?1:-1)*fall*intensity)}
  attr.setXYZ(i,local.x,local.y,local.z)
 }
