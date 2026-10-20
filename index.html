@@ -7,7 +7,7 @@
 #panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:45px;overflow:hidden}
 button,select{font:inherit;color:#f1ede9;background:#30333d;border:1px solid #4b4e59;border-radius:11px;padding:10px 6px;touch-action:manipulation}button.active{background:#775b49;border-color:#d6ac88}button:disabled{opacity:.45}#handle{display:block;width:100%;background:transparent;border:0;color:#e4b994;padding:5px 0 11px;font-weight:700}
 .tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1;min-width:0}#layers{display:flex;gap:6px;overflow-x:auto;padding:9px 0}#layers button{white-space:nowrap;flex:none;padding:8px 10px}label{display:flex;justify-content:space-between;margin:11px 0 3px}input[type=range]{width:100%;accent-color:#d4a07a}#projects{max-height:140px;overflow:auto}
-</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.8.0</div></div><div id="status">Starting…</div></header><main id="stage"><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel"><button id="handle">⌄ Tools · Tap to collapse</button>
+</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.9.0</div></div><div id="status">Starting…</div></header><main id="stage"><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel"><button id="handle">⌄ Tools · Tap to collapse</button>
 <div class="tools"><button data-tool="add" class="active">＋ Add</button><button data-tool="carve">－ Carve</button><button data-tool="smooth">≈ Smooth</button><button data-tool="crease">⌁ Crease Fix</button><button data-tool="pull">↗ Pull</button><button data-tool="move">✥ Move</button><button data-tool="model">⬡ Model</button></div>
 <div class="row"><button id="mirror">⇄ Mirror: Off</button><select id="mirrorDirection" aria-label="Post Mirror direction"><option value="positive">+X → −X</option><option value="negative">−X → +X</option></select><button id="postmirror">⇥ Symmetrize</button></div>
 <div class="row"><button id="addshape">＋ Shape</button><select id="shape"><option value="sphere">Sphere</option><option value="box">Box</option><option value="cylinder">Cylinder</option><option value="torus">Torus</option></select></div>
@@ -42,6 +42,28 @@ function quadMesh(coords,quads){
  g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));g.setIndex(tri);
  g.userData.quads=quads.map(q=>q.slice());g.computeVertexNormals();g.computeBoundingSphere();return g
 }
+function ensureQuads(g){
+ if(g.userData.quads?.length)return g;
+ const t=topology(g);
+ if(!t?.closed)throw Error('Quad conversion needs a closed mesh');
+ if(t.faces.length*3>120000)throw Error('Too many faces for quad conversion');
+ const coords=Array.from(g.attributes.position.array),edgeMid=new Map(),quads=[];
+ const midpoint=(a,b)=>{
+  const key=a<b?a+','+b:b+','+a;
+  if(edgeMid.has(key))return edgeMid.get(key);
+  const id=coords.length/3;
+  for(let k=0;k<3;k++)coords.push((coords[a*3+k]+coords[b*3+k])/2);
+  edgeMid.set(key,id);return id
+ };
+ for(const [a,b,c] of t.faces){
+  const ab=midpoint(a,b),bc=midpoint(b,c),ca=midpoint(c,a),center=coords.length/3;
+  for(let k=0;k<3;k++)coords.push((coords[a*3+k]+coords[b*3+k]+coords[c*3+k])/3);
+  quads.push([a,ab,center,ca],[b,bc,center,ab],[c,ca,center,bc])
+ }
+ const result=quadMesh(coords,quads);
+ if(!topology(result)?.closed){result.dispose();throw Error('Quad conversion failed topology validation')}
+ g.dispose();return result
+}
 function quadCube(){
  const h=.7,coords=[-h,-h,-h,h,-h,-h,h,h,-h,-h,h,-h,-h,-h,h,h,-h,h,h,h,h,-h,h,h];
  return quadMesh(coords,[[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]])
@@ -55,7 +77,7 @@ function geometry(type){
  const result=weldGeometry(source);
  const check=topology(result);
  if(!check?.closed){result.dispose();throw Error(type+' primitive is not watertight')}
- return result
+ return ensureQuads(result)
 }
 function weldGeometry(g){
  const position=g.attributes.position,source=g.index,vertices=[],faces=[],lookup=new Map(),seen=new Set();
@@ -94,7 +116,7 @@ function drawGizmo(){gizmo.visible=tool==='move'&&!!selected;if(!selected)return
 function setGizmo(mode){gizmoMode=mode;drawGizmo();render()}
 function capture(){return {layers:layers.map(o=>({type:o.userData.type,label:o.userData.label,positions:Array.from(o.geometry.attributes.position.array),quads:o.geometry.userData.quads||null,indices:o.geometry.index?Array.from(o.geometry.index.array):null,position:o.position.toArray(),quaternion:o.quaternion.toArray(),scale:o.scale.toArray()})),selected:Math.max(0,layers.indexOf(selected))}}
 function checkpoint(){undoStack.push(capture());if(undoStack.length>12)undoStack.shift()}
-function restoreData(data){if(!data?.layers?.length||data.layers.length>12)throw Error('Invalid project');const next=[];for(const entry of data.layers){if(!entry.positions||entry.positions.length>500000||entry.positions.length%3)throw Error('Project too large');const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(entry.positions,3));if(entry.indices)g.setIndex(entry.indices);if(entry.quads)g.userData.quads=entry.quads.map(q=>q.slice());g.computeVertexNormals();g.computeBoundingSphere();const obj=new THREE.Mesh(g,material());obj.userData.type=entry.type;obj.userData.label=entry.label;obj.position.fromArray(entry.position||[0,0,0]);obj.quaternion.fromArray(entry.quaternion||[0,0,0,1]);obj.scale.fromArray(entry.scale||[1,1,1]);next.push(obj)}for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=next;for(const o of next)scene.add(o);select(next[Math.min(next.length-1,data.selected||0)]);render()}
+function restoreData(data){if(!data?.layers?.length||data.layers.length>12)throw Error('Invalid project');const next=[];for(const entry of data.layers){if(!entry.positions||entry.positions.length>500000||entry.positions.length%3)throw Error('Project too large');const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(entry.positions,3));if(entry.indices)g.setIndex(entry.indices);if(entry.quads)g.userData.quads=entry.quads.map(q=>q.slice());g.computeVertexNormals();g.computeBoundingSphere();const quad=ensureQuads(g);const obj=new THREE.Mesh(quad,material());obj.userData.type=entry.type;obj.userData.label=entry.label;obj.position.fromArray(entry.position||[0,0,0]);obj.quaternion.fromArray(entry.quaternion||[0,0,0,1]);obj.scale.fromArray(entry.scale||[1,1,1]);next.push(obj)}for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=next;for(const o of next)scene.add(o);select(next[Math.min(next.length-1,data.selected||0)]);render()}
 function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(capture()))}catch(e){message('Storage full')}},700)}
 function saveProject(){try{const k='mini-clay-project-'+Date.now();localStorage.setItem(k,JSON.stringify(capture()));message('Project saved')}catch(e){message('Could not save project')}}
 function listProjects(){const el=$('#projects');el.hidden=!el.hidden;if(el.hidden)return;el.replaceChildren();const keys=Object.keys(localStorage).filter(k=>k.startsWith('mini-clay-project-')).sort().reverse();for(const k of keys){const row=document.createElement('div');row.className='row';const b=document.createElement('button');b.textContent=new Date(Number(k.split('-').pop())).toLocaleString();b.onclick=()=>{try{checkpoint();restoreData(JSON.parse(localStorage.getItem(k)));scheduleSave();el.hidden=true}catch(e){message(e.message)}};const d=document.createElement('button');d.textContent='Delete';d.onclick=()=>{if(confirm('Delete this project?')){localStorage.removeItem(k);listProjects();listProjects()}};row.append(b,d);el.append(row)}if(!keys.length)el.textContent='No saved projects'}
@@ -211,7 +233,7 @@ function remesh(){if(!selected)return;const g=selected.geometry,t=topology(g);if
 if(!split.size){message('Detail already sufficient');return}
 function midpoint(u,v){const k=t.key(u,v);if(mid.has(k))return mid.get(k);const A=pt(u),B=pt(v),id=verts.length/3;verts.push((A.x+B.x)/2,(A.y+B.y)/2,(A.z+B.z)/2);mid.set(k,id);return id}
 for(const [a,b,c] of faces){const ab=split.has(t.key(a,b))?midpoint(a,b):-1,bc=split.has(t.key(b,c))?midpoint(b,c):-1,ca=split.has(t.key(c,a))?midpoint(c,a):-1;const n=(ab>=0)+(bc>=0)+(ca>=0);if(!n)out.push(a,b,c);else if(n===1){if(ab>=0)out.push(a,ab,c,ab,b,c);else if(bc>=0)out.push(b,bc,a,bc,c,a);else out.push(c,ca,b,ca,a,b)}else if(n===2){if(ab<0)out.push(c,ca,bc,ca,a,b,ca,b,bc);else if(bc<0)out.push(a,ab,ca,ab,b,c,ab,c,ca);else out.push(b,bc,ab,bc,c,a,bc,a,ab)}else out.push(a,ab,ca,ab,b,bc,ca,bc,c,ab,bc,ca)}
-if(out.length/3>MAX_FACES){message('Remesh canceled: polygon limit');return}const next=new THREE.BufferGeometry();next.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));next.setIndex(out);if(!topology(next).closed){next.dispose();message('Remesh canceled: topology check');return}next.computeVertexNormals();next.computeBoundingSphere();checkpoint();selected.geometry=next;g.dispose();scheduleSave();render();message('Remeshed: '+out.length/3+' triangles')}
+if(out.length/3>MAX_FACES){message('Remesh canceled: polygon limit');return}const next=new THREE.BufferGeometry();next.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));next.setIndex(out);if(!topology(next).closed){next.dispose();message('Remesh canceled: topology check');return}next.computeVertexNormals();next.computeBoundingSphere();const quad=ensureQuads(next);checkpoint();selected.geometry=quad;g.dispose();scheduleSave();render();message('Remeshed into '+quad.userData.quads.length+' quads')}
 function retopologize(){
  if(!selected)return;
  const old=selected.geometry,t=topology(old);
@@ -232,7 +254,7 @@ function retopologize(){
  }
  const next=new THREE.BufferGeometry();
  next.setAttribute('position',new THREE.Float32BufferAttribute(out,3));
- next.setIndex(Array.from(old.index.array));
+ next.setIndex(Array.from(old.index.array));if(old.userData.quads)next.userData.quads=old.userData.quads.map(q=>q.slice());
  if(!topology(next)?.closed){next.dispose();message('Retopology canceled: invalid topology');return}
  next.computeVertexNormals();next.computeBoundingSphere();
  checkpoint();selected.geometry=next;old.dispose();render();scheduleSave();
@@ -442,7 +464,7 @@ function postMirror(){
  if(open||nonmanifold||!validated?.closed){output.dispose();message('Symmetrize canceled: '+open+' open, '+nonmanifold+' non-manifold edges. Original kept');return}
  if(output.index.count/3>MAX_FACES){output.dispose();message('Symmetrize exceeds polygon limit');return}
  output.computeVertexNormals();output.computeBoundingSphere();
- checkpoint();selected.geometry=output;old.dispose();render();scheduleSave();
+ let quad;try{quad=ensureQuads(output)}catch(e){output.dispose();message(e.message);return}checkpoint();selected.geometry=quad;old.dispose();render();scheduleSave();
  message('Symmetrized '+(direction<0?'−X → +X':'+X → −X')+' · watertight')
 }
 function center(){target.set(0,0,0);camera.position.set(2,1.3,4.2);camera.lookAt(target);drawGizmo();render()}
@@ -532,5 +554,5 @@ $('#undo').onclick=()=>{if(!undoStack.length){message('Nothing to undo');return}
 $('#center').onclick=center;$('#new').onclick=()=>{if(!confirm('Start a new sculpture?'))return;checkpoint();for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=[];add('box');center()};
 $('#save').onclick=saveProject;$('#projectsbtn').onclick=listProjects;$('#backup').onclick=()=>{const raw=localStorage.getItem(BACKUP);if(!raw){message('No fuse backup available');return}if(confirm('Restore the layers from before your last fusion?')){checkpoint();restoreData(JSON.parse(raw));scheduleSave();message('Fusion backup restored')}};
 try{const raw=localStorage.getItem(KEY)||localStorage.getItem('mini-clay-current');if(raw){const data=JSON.parse(raw);if(data.layers?.length){if(data.layers[0].translation&&!data.layers[0].position){for(const item of data.layers){item.position=item.translation;item.quaternion=new THREE.Quaternion().setFromEuler(new THREE.Euler(...(item.rotation||[0,0,0]))).toArray()}}restoreData(data)}else add('box')}else add('box')}catch(e){console.error(e);add('box');message('New sculpture ready')}
-center();resize();message('Ready · v2.8.0');
+center();resize();message('Ready · v2.9.0');
 </script></body></html>
