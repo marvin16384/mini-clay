@@ -1,675 +1,115 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#101116"><title>Mini Clay</title>
-<style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body,#app,#stage,#panel,button,select,label,output{user-select:none!important;-webkit-user-select:none!important;-webkit-touch-callout:none}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101116;color:#f1ede9;font:14px system-ui;overscroll-behavior:none;user-select:none}
-#app{height:100dvh;display:flex;flex-direction:column}header{height:58px;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}h1{font-size:17px;margin:0}#version{font-size:10px;color:#aaa6a4}#status{font-size:11px;color:#aaa6a4;text-align:right;max-width:52%;font-weight:400}
-#stage{position:relative;flex:1;min-height:120px;overflow:hidden;touch-action:none}canvas{display:block;width:100%;height:100%;touch-action:none}#hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;pointer-events:none;font-size:11px;color:#b9b4b1}
-#panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:54px;overflow:hidden}#panel.closed>*:not(#handle){display:none!important}#panel [hidden]{display:none!important}#quickbar{position:absolute;top:12px;left:10px;right:10px;display:flex;gap:7px;z-index:3;pointer-events:none}#quickbar button{pointer-events:auto;min-height:43px;padding:8px 12px;background:#272a33e8;backdrop-filter:blur(12px);box-shadow:0 3px 12px #0005}#quickbar button.active{background:#775b49}#quickbar .spacer{flex:1}#quickExtrude,#quickMulti,#quickBevel,#transformBar{display:none}body.model-mode #quickExtrude,body.model-mode #quickMulti,body.model-mode #quickBevel{display:block}body.model-mode #transformBar{display:flex}#transformBar{gap:4px}#transformBar button{font-size:12px;padding:8px 7px!important}#transformBar button.active{background:#775b49}#editHandle{display:none;position:absolute;z-index:4;width:54px;height:54px;border-radius:50%;border:2px solid #f4c38f;background:#3b3029e8;color:#fff;font-size:23px;touch-action:none;box-shadow:0 3px 14px #0009;transform:translate(-50%,-50%)}#editHandle.visible{display:block}#editHandle:active{background:#906747}.tools{grid-template-columns:repeat(4,minmax(0,1fr))!important}.tools button{padding:9px 3px;font-size:12px}#panel:not(.closed){max-height:min(55dvh,510px)}#handle{position:sticky;top:0;z-index:2;background:#1b1d24!important}
-button,select{font:inherit;color:#f1ede9;background:#30333d;border:1px solid #4b4e59;border-radius:11px;padding:10px 6px;touch-action:manipulation}button.active{background:#775b49;border-color:#d6ac88}button:disabled{opacity:.45}#handle{display:block;width:100%;background:transparent;border:0;color:#e4b994;padding:5px 0 11px;font-weight:700}
-.tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1;min-width:0}#layers{display:flex;gap:6px;overflow-x:auto;padding:9px 0}#layers button{white-space:nowrap;flex:none;padding:8px 10px}label{display:flex;justify-content:space-between;margin:11px 0 3px}input[type=range]{width:100%;accent-color:#d4a07a}#projects{max-height:140px;overflow:auto}
-</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.12.0</div></div><div id="status">Starting…</div></header><main id="stage"><div id="quickbar"><button id="quickMode">⬡ Model</button><button id="quickMirror">⇄ On</button><button id="quickExtrude">⇧ Extrude</button><button id="quickMulti">＋ Multi</button><button id="quickBevel">◩ Bevel</button><div id="transformBar"><button data-transform="translate" class="active">↔ Move</button><button data-transform="rotate">⟳ Rotate</button><button data-transform="scale">⤢ Scale</button></div><span class="spacer"></span><button id="quickUndo">↶</button><button id="quickTools">☷ Tools</button></div><button id="editHandle" aria-label="Drag selected geometry">✥</button><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel" class="closed"><button id="handle">⌃ Tools · Tap to expand</button>
-<div class="tools"><button data-tool="add" class="active">＋ Add</button><button data-tool="carve">－ Carve</button><button data-tool="smooth">≈ Smooth</button><button data-tool="crease">⌁ Crease Fix</button><button data-tool="pull">↗ Pull</button><button data-tool="move">✥ Move</button><button data-tool="model">⬡ Model</button></div>
-<div class="row"><button id="mirror">⇄ Mirror: Off</button><select id="mirrorDirection" aria-label="Post Mirror direction"><option value="positive">+X → −X</option><option value="negative">−X → +X</option></select><button id="postmirror">⇥ Symmetrize</button></div>
-<div class="row"><button id="addshape">＋ Shape</button><select id="shape"><option value="sphere">Sphere</option><option value="box">Box</option><option value="cylinder">Cylinder</option><option value="torus">Torus</option></select></div>
-<div id="layers"></div><div class="row" id="modelControls" hidden><select id="editMode" aria-label="Selection type"><option value="face">Face</option><option value="edge">Edge</option><option value="vertex">Vertex</option></select><button id="extrude">Extrude</button><button id="bevel">Bevel</button><button id="multiSelect">＋ Multi: Off</button></div><div class="row" id="modelControls2" hidden><button id="grow">Grow Selection</button><button id="clearSelection">Clear</button></div><div class="row"><button id="merge">▣ Fuse Layers</button><button id="remesh">◇ Smart Remesh</button></div><div class="row"><button id="retopo">⬡ Retopologize</button></div>
-<label>Brush size <output id="sizeout">35</output></label><input id="size" type="range" min="5" max="100" value="35">
-<label>Strength <output id="strengthout">35</output></label><input id="strength" type="range" min="5" max="100" value="35">
-<div class="row"><button id="undo">↶ Undo</button><button id="center">⊙ Center</button><button id="new">● New</button></div>
-<div class="row"><button id="save">Save Project</button><button id="projectsbtn">Projects</button><button id="backup">Restore Fuse Backup</button></div><div id="projects" hidden></div>
-</section></div>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#17191f"><title>Mini Blender · Mobile</title><style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}body{margin:0;background:#17191f;color:#eef0f5;overflow:hidden}button,select,input{font:inherit;color:inherit}button{border:1px solid #424854;background:#2c303b;border-radius:11px;padding:10px 12px;touch-action:manipulation;white-space:nowrap}button.active{background:#d28b45;color:#1b1b1b;border-color:#e6ac6d}button:disabled{opacity:.35}select{background:#30343e;border:1px solid #4b5260;border-radius:10px;padding:9px}#app{height:100dvh;display:flex;flex-direction:column}header{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:#20232b;border-bottom:1px solid #343945}header strong{font-size:16px}small{font-size:11px;color:#aab1bf}#viewport{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none}canvas{display:block;width:100%;height:100%;touch-action:none}#top{position:absolute;top:9px;left:9px;right:9px;display:flex;gap:6px;align-items:center;pointer-events:none;overflow-x:auto;scrollbar-width:none}#top>*{pointer-events:auto}#top button{padding:8px 10px;background:#303540e8;backdrop-filter:blur(9px)}#top button.active{background:#d28b45}#hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#191c22b8;border-radius:12px;padding:6px 11px;color:#d0d4dc;font-size:11px;pointer-events:none;white-space:nowrap}#gizmo{position:absolute;display:none;width:54px;height:54px;border-radius:50%;background:#dc9b50e8;color:#161719;border:2px solid #ffe0a8;transform:translate(-50%,-50%);font-size:24px;touch-action:none;z-index:3;box-shadow:0 5px 18px #0008}#gizmo.visible{display:block}#bottom{background:#222630;border-top:1px solid #414752;padding:8px 8px max(9px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:7px}#tabs,#actions,#extra{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}#tabs button,#actions button,#extra button{flex:none}#tabs button{min-width:70px}#extra{display:none}#extra.open{display:flex}#status{font-size:11px;color:#aab1bf;max-width:46vw;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#toast{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);background:#101218e8;border-radius:10px;padding:8px 12px;font-size:12px;max-width:90vw;text-align:center;pointer-events:none;opacity:0;transition:opacity .2s}#toast.show{opacity:1}@media(max-width:400px){button{padding:9px;font-size:12px}#top button{padding:8px}#hint{font-size:10px}}
+</style></head><body><div id="app"><header><div><strong>⬡ Mini Blender</strong> <small>Mobile · v3.0.0</small></div><div id="status">Ready</div></header><main id="viewport"><div id="top"><button id="undo">↶</button><button id="redo">↷</button><button id="mirror" class="active">⇄ Mirror On</button><button id="view">◎ Frame</button><button id="more">☷</button></div><button id="gizmo" aria-label="Drag to transform selection">✥</button><div id="toast"></div><div id="hint">Tap to select · 2 fingers orbit / zoom · drag ✥ to edit</div></main><section id="bottom"><div id="tabs"><button data-mode="object">Object</button><button data-mode="vertex">Vertex</button><button data-mode="edge">Edge</button><button data-mode="face" class="active">Face</button><button id="multi">＋ Multi</button></div><div id="actions"><button data-op="move" class="active">↔ Move</button><button data-op="rotate">⟳ Rotate</button><button data-op="scale">⤢ Scale</button><button id="extrude">⇧ Extrude</button><button id="inset">▣ Inset</button><button id="bevel">◩ Bevel</button></div><div id="extra"><button id="cube">＋ Cube</button><button id="duplicate">⧉ Duplicate</button><button id="delete">⌫ Delete</button><button id="reset">↺ New</button><button id="save">↓ Save</button><button id="load">↑ Load</button><button id="wire">▦ Wire</button></div></section></div>
 <script type="module">
 import * as THREE from 'https://esm.sh/three@0.170.0';
-const $=s=>document.querySelector(s),stage=$('#stage'),status=$('#status'),scene=new THREE.Scene();
-scene.background=new THREE.Color('#101116');
-const camera=new THREE.PerspectiveCamera(42,1,.05,150),target=new THREE.Vector3(),renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));stage.prepend(renderer.domElement);
-camera.position.set(2,1.3,4.2);camera.lookAt(target);
-scene.add(new THREE.HemisphereLight(0xffffff,0x554438,2.3));
-const sun=new THREE.DirectionalLight(0xffe3c8,2.6);sun.position.set(-3,5,6);scene.add(sun);
-const grid=new THREE.GridHelper(8,16,0x596276,0x343743);grid.position.y=-1.6;scene.add(grid);
-scene.add(new THREE.AxesHelper(2.1));
-const material=()=>new THREE.MeshStandardMaterial({color:0xc69c7b,roughness:.9,metalness:0,side:THREE.DoubleSide});
-let layers=[],selected=null,tool='add',mirror=localStorage.getItem('mini-clay-mirror')!=='off',brush=.35,strength=.35,undoStack=[],saveTimer=null;
-const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),v=new THREE.Vector3(),w=new THREE.Vector3();
-const MAX_FACES=60000,KEY='mini-clay-v2-current',BACKUP='mini-clay-v2-before-fuse';
-function message(s){status.textContent=s}
-function render(){renderer.render(scene,camera);if(typeof positionEditHandle==='function')positionEditHandle()}
-function resize(){const r=stage.getBoundingClientRect();camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);render()}
-new ResizeObserver(resize).observe(stage);
-function quadMesh(coords,quads){
- const g=new THREE.BufferGeometry(),tri=[];
- for(const [a,b,c,d] of quads)tri.push(a,b,c,a,c,d);
- g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));g.setIndex(tri);
- g.userData.quads=quads.map(q=>q.slice());g.computeVertexNormals();g.computeBoundingSphere();return g
+const $=s=>document.querySelector(s),viewport=$('#viewport'),scene=new THREE.Scene();scene.background=new THREE.Color(0x171a21);
+const camera=new THREE.PerspectiveCamera(45,1,.01,500),renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;viewport.insertBefore(renderer.domElement,viewport.firstChild);
+scene.add(new THREE.HemisphereLight(0xffffff,0x57627d,2));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(4,7,6);scene.add(sun);
+const grid=new THREE.GridHelper(20,20,0x626874,0x373c48);grid.position.y=-1.1;scene.add(grid);
+const target=new THREE.Vector3(),spherical=new THREE.Spherical(5,1.15,.72);
+const mat=()=>new THREE.MeshStandardMaterial({color:0x9aa7b7,metalness:.12,roughness:.65,side:THREE.DoubleSide,flatShading:false});
+const meshes=[],ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
+let active=null,mode='face',op='move',multi=false,mirror=localStorage.getItem('mini-blender-mirror')!=='off',wire=true;
+let faces=new Set(),edges=new Set(),vertices=new Set(),history=[],future=[],gesture=null,handleDrag=null,dirty=false,saveTimer=0;
+const edgeKey=(a,b)=>a<b?a+','+b:b+','+a;
+function notice(t){$('#toast').textContent=t;$('#toast').classList.add('show');clearTimeout(notice.t);notice.t=setTimeout(()=>$('#toast').classList.remove('show'),1900)}
+function status(t){$('#status').textContent=t}
+function cameraUpdate(){camera.position.setFromSpherical(spherical).add(target);camera.lookAt(target);camera.updateMatrixWorld()}
+function render(){cameraUpdate();renderer.render(scene,camera);positionHandle()}
+function resize(){const r=viewport.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();render()}
+new ResizeObserver(resize).observe(viewport);
+function geometry(coords,quads){const g=new THREE.BufferGeometry(),tri=[];for(const q of quads){if(q.length!==4)throw Error('Invalid quad');tri.push(q[0],q[1],q[2],q[0],q[2],q[3])}g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));g.setIndex(tri);g.userData.quads=quads.map(q=>q.slice());g.computeVertexNormals();g.computeBoundingSphere();return g}
+function cubeGeo(){const h=.75;return geometry([-h,-h,-h,h,-h,-h,h,h,-h,-h,h,-h,-h,-h,h,h,-h,h,h,h,h,-h,h,h],[[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]])}
+function addCube(offset=0){const mesh=new THREE.Mesh(cubeGeo(),mat());mesh.position.x=offset;scene.add(mesh);meshes.push(mesh);selectObject(mesh);return mesh}
+const overlay=new THREE.Group();scene.add(overlay);
+function clearOverlay(){for(const o of [...overlay.children]){overlay.remove(o);o.geometry?.dispose();o.material?.dispose()}}
+function selectedIds(){if(!active)return [];const q=active.geometry.userData.quads;return [...new Set([...vertices,...[...edges].flatMap(e=>e.split(',').map(Number)),...[...faces].flatMap(f=>q[f]||[])])]}
+function positionHandle(){const h=$('#gizmo'),ids=selectedIds();if(!active||!ids.length||mode==='object'){h.classList.remove('visible');return}const a=active.geometry.attributes.position,c=new THREE.Vector3();for(const i of ids)c.add(new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)));c.multiplyScalar(1/ids.length);active.localToWorld(c);c.project(camera);const r=viewport.getBoundingClientRect(),x=(c.x+1)*r.width/2,y=(1-c.y)*r.height/2;if(c.z>1||x<0||x>r.width||y<0||y>r.height){h.classList.remove('visible');return}h.style.left=Math.max(30,Math.min(r.width-30,x+64))+'px';h.style.top=Math.max(68,Math.min(r.height-30,y-62))+'px';h.classList.add('visible')}
+function overlayUpdate(){clearOverlay();if(!active){render();return}const a=active.geometry.attributes.position,q=active.geometry.userData.quads,lines=[],chosen=[],fill=[];
+ const line=(u,v,arr)=>arr.push(a.getX(u),a.getY(u),a.getZ(u),a.getX(v),a.getY(v),a.getZ(v));
+ if(wire)for(const f of q)for(let j=0;j<4;j++)line(f[j],f[(j+1)%4],lines);
+ for(const fi of faces){const f=q[fi];if(!f)continue;for(let j=0;j<4;j++)line(f[j],f[(j+1)%4],chosen);for(const j of [0,1,2,0,2,3])fill.push(a.getX(f[j]),a.getY(f[j]),a.getZ(f[j]))}
+ for(const e of edges){const [u,v]=e.split(',').map(Number);line(u,v,chosen)}
+ const addLines=(coords,color,opacity)=>{if(!coords.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));overlay.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color,opacity,transparent:true,depthTest:false,depthWrite:false})))};
+ addLines(lines,0x252e3b,.6);addLines(chosen,0xffac4b,1);
+ if(fill.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(fill,3));overlay.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0xffa849,opacity:.3,transparent:true,side:THREE.DoubleSide,depthTest:false,depthWrite:false})))}
+ if(vertices.size){const pts=[];for(const i of vertices)pts.push(a.getX(i),a.getY(i),a.getZ(i));const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));overlay.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xffbd64,size:10,sizeAttenuation:false,depthTest:false})))}
+ overlay.position.copy(active.position);overlay.quaternion.copy(active.quaternion);overlay.scale.copy(active.scale);render()
 }
-function ensureQuads(g){
- if(g.userData.quads?.length)return g;
- const t=topology(g);
- if(!t?.closed)throw Error('Quad conversion needs a closed mesh');
- if(t.faces.length*3>120000)throw Error('Too many faces for quad conversion');
- const coords=Array.from(g.attributes.position.array),edgeMid=new Map(),quads=[];
- const midpoint=(a,b)=>{
-  const key=a<b?a+','+b:b+','+a;
-  if(edgeMid.has(key))return edgeMid.get(key);
-  const id=coords.length/3;
-  for(let k=0;k<3;k++)coords.push((coords[a*3+k]+coords[b*3+k])/2);
-  edgeMid.set(key,id);return id
- };
- for(const [a,b,c] of t.faces){
-  const ab=midpoint(a,b),bc=midpoint(b,c),ca=midpoint(c,a),center=coords.length/3;
-  for(let k=0;k<3;k++)coords.push((coords[a*3+k]+coords[b*3+k]+coords[c*3+k])/3);
-  quads.push([a,ab,center,ca],[b,bc,center,ab],[c,ca,center,bc])
- }
- const result=quadMesh(coords,quads);
- if(!topology(result)?.closed){result.dispose();throw Error('Quad conversion failed topology validation')}
- g.dispose();return result
+function selectObject(m){active=m;faces.clear();edges.clear();vertices.clear();overlayUpdate()}
+function pick(x,y){const r=viewport.getBoundingClientRect();pointer.set((x-r.left)/r.width*2-1,-(y-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects(meshes,false);if(!hits.length)return;const hit=hits[0];if(active!==hit.object)selectObject(hit.object);if(mode==='object'){notice('Object selected');return}
+ const a=active.geometry.attributes.position,q=active.geometry.userData.quads,fi=Math.floor(hit.faceIndex/2),f=q[fi];if(!f)return;const p=active.worldToLocal(hit.point.clone());
+ if(!multi){faces.clear();edges.clear();vertices.clear()}
+ if(mode==='face'){if(faces.has(fi))faces.delete(fi);else faces.add(fi)}
+ if(mode==='vertex'){let best=f[0],d=Infinity;for(const i of f){const dist=p.distanceToSquared(new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)));if(dist<d){d=dist;best=i}}if(vertices.has(best))vertices.delete(best);else vertices.add(best)}
+ if(mode==='edge'){let best='',d=Infinity;for(let j=0;j<4;j++){const u=f[j],v=f[(j+1)%4],A=new THREE.Vector3(a.getX(u),a.getY(u),a.getZ(u)),B=new THREE.Vector3(a.getX(v),a.getY(v),a.getZ(v)),dir=B.sub(A),t=THREE.MathUtils.clamp(p.clone().sub(A).dot(dir)/Math.max(dir.lengthSq(),1e-9),0,1),dist=p.distanceToSquared(A.addScaledVector(dir,t));if(dist<d){d=dist;best=edgeKey(u,v)}}if(edges.has(best))edges.delete(best);else edges.add(best)}
+ overlayUpdate();status(selectedIds().length+' vertices · '+faces.size+' faces')
 }
-function quadCube(){
- const h=.7,coords=[-h,-h,-h,h,-h,-h,h,h,-h,-h,h,-h,-h,-h,h,h,-h,h,h,h,h,-h,h,h];
- return quadMesh(coords,[[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]])
+function serialize(){return {meshes:meshes.map(m=>({positions:Array.from(m.geometry.attributes.position.array),quads:m.geometry.userData.quads,position:m.position.toArray(),rotation:m.quaternion.toArray(),scale:m.scale.toArray()})),active:meshes.indexOf(active)}}
+function restore(data){for(const m of meshes){scene.remove(m);m.geometry.dispose();m.material.dispose()}meshes.length=0;for(const d of data.meshes){const m=new THREE.Mesh(geometry(d.positions,d.quads),mat());m.position.fromArray(d.position);m.quaternion.fromArray(d.rotation);m.scale.fromArray(d.scale);scene.add(m);meshes.push(m)}selectObject(meshes[data.active]||meshes[0]||null)}
+function checkpoint(){history.push(JSON.stringify(serialize()));if(history.length>35)history.shift();future.length=0}
+function undo(){if(!history.length)return;future.push(JSON.stringify(serialize()));restore(JSON.parse(history.pop()));autosave();notice('Undo')}
+function redo(){if(!future.length)return;history.push(JSON.stringify(serialize()));restore(JSON.parse(future.pop()));autosave();notice('Redo')}
+function autosave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{localStorage.setItem('mini-blender-project',JSON.stringify(serialize()))}catch(e){notice('Storage full — use Save')}},500)}
+function replaceMesh(coords,quads,selection=[]){const next=geometry(coords,quads),old=active.geometry;active.geometry=next;old.dispose();faces=new Set(selection);edges.clear();vertices.clear();overlayUpdate();autosave()}
+function mirrorPairs(ids){const a=active.geometry.attributes.position,map=new Map(),tol=.005;for(const i of ids){const x=a.getX(i),y=a.getY(i),z=a.getZ(i);if(Math.abs(x)<tol){map.set(i,i);continue}let found=-1,d=tol*tol;for(let j=0;j<a.count;j++){if(ids.includes(j))continue;const dx=a.getX(j)+x,dy=a.getY(j)-y,dz=a.getZ(j)-z,dist=dx*dx+dy*dy+dz*dz;if(dist<d){d=dist;found=j}}if(found>=0)map.set(i,found)}return map}
+function transform(dx,dy){if(!active)return;const ids=selectedIds();if(!ids.length&&mode!=='object')return;
+ if(mode==='object'){if(op==='move'){const factor=spherical.radius*.0018;const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);active.position.addScaledVector(right,dx*factor).addScaledVector(up,-dy*factor)}else if(op==='scale')active.scale.multiplyScalar(Math.exp((dx-dy)*.008));else active.rotateY(dx*.012);overlayUpdate();autosave();return}
+ const a=active.geometry.attributes.position,c=new THREE.Vector3(),pairs=mirror?mirrorPairs(ids):null;for(const i of ids)c.add(new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)));c.multiplyScalar(1/ids.length);
+ if(op==='move'){const factor=spherical.radius*.0018,right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1),delta=right.multiplyScalar(dx*factor).addScaledVector(up,-dy*factor).applyQuaternion(active.getWorldQuaternion(new THREE.Quaternion()).invert());for(const i of ids)a.setXYZ(i,a.getX(i)+delta.x,a.getY(i)+delta.y,a.getZ(i)+delta.z)}
+ if(op==='scale'){const amount=Math.exp((dx-dy)*.008);for(const i of ids){const v=new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)).sub(c).multiplyScalar(amount).add(c);a.setXYZ(i,v.x,v.y,v.z)}}
+ if(op==='rotate'){const local=active.getWorldQuaternion(new THREE.Quaternion()).invert(),up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion).applyQuaternion(local),right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion).applyQuaternion(local),q=new THREE.Quaternion().setFromAxisAngle(up,dx*.012).multiply(new THREE.Quaternion().setFromAxisAngle(right,dy*.012));for(const i of ids){const v=new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)).sub(c).applyQuaternion(q).add(c);a.setXYZ(i,v.x,v.y,v.z)}}
+ if(pairs)for(const [i,j] of pairs){if(i===j)a.setX(i,0);else a.setXYZ(j,-a.getX(i),a.getY(i),a.getZ(i))}
+ a.needsUpdate=true;active.geometry.computeVertexNormals();active.geometry.computeBoundingSphere();overlayUpdate();autosave()
 }
-function geometry(type){
- if(type==='box')return quadCube();
- const source=type==='box'?new THREE.BoxGeometry(1.35,1.35,1.35,12,12,12):
- type==='cylinder'?new THREE.CylinderGeometry(.75,.75,1.5,48,14):
- type==='torus'?new THREE.TorusGeometry(.65,.25,24,72):
- new THREE.SphereGeometry(.9,64,40);
- const result=weldGeometry(source);
- const check=topology(result);
- if(!check?.closed){result.dispose();throw Error(type+' primitive is not watertight')}
- return ensureQuads(result)
+function edgeStats(quads){const counts=new Map();for(const f of quads)for(let j=0;j<4;j++){const k=edgeKey(f[j],f[(j+1)%4]);counts.set(k,(counts.get(k)||0)+1)}return counts}
+function extrude(){if(!active||!faces.size){notice('Select faces first');return}const g=active.geometry,base=g.userData.quads,q=base.map(f=>f.slice()),coords=Array.from(g.attributes.position.array),chosen=new Set(faces),a=g.attributes.position;
+ if(mirror)for(const fi of [...chosen]){const src=base[fi];if(src.every(i=>Math.abs(a.getX(i))<.002))continue;const other=base.findIndex((f,k)=>k!==fi&&src.every(i=>f.some(j=>Math.abs(a.getX(i)+a.getX(j))<.002&&Math.abs(a.getY(i)-a.getY(j))<.002&&Math.abs(a.getZ(i)-a.getZ(j))<.002)));if(other<0){notice('Mirror needs matching opposite faces');return}chosen.add(other)}
+ const edges=new Map(),normals=new Map();for(const fi of chosen){const f=base[fi],A=new THREE.Vector3(...coords.slice(f[0]*3,f[0]*3+3)),B=new THREE.Vector3(...coords.slice(f[1]*3,f[1]*3+3)),C=new THREE.Vector3(...coords.slice(f[2]*3,f[2]*3+3)),n=B.sub(A).cross(C.sub(A)).normalize();for(const i of f){if(!normals.has(i))normals.set(i,new THREE.Vector3());normals.get(i).add(n)}for(let j=0;j<4;j++){const u=f[j],v=f[(j+1)%4],key=edgeKey(u,v);if(!edges.has(key))edges.set(key,{u,v,count:0});edges.get(key).count++}}
+ const raised=new Map();for(const [i,n] of normals){const v=new THREE.Vector3(...coords.slice(i*3,i*3+3)).addScaledVector(n.normalize(),.25),id=coords.length/3;coords.push(v.x,v.y,v.z);raised.set(i,id)}
+ for(const fi of chosen)q[fi]=base[fi].map(i=>raised.get(i));for(const e of edges.values())if(e.count===1)q.push([e.u,e.v,raised.get(e.v),raised.get(e.u)]);
+ if([...edgeStats(q).values()].some(n=>n!==2)){notice('Extrude would break mesh');return}checkpoint();replaceMesh(coords,q,[...chosen]);notice('Extruded '+chosen.size+' faces')
 }
-function weldGeometry(g){
- const position=g.attributes.position,source=g.index,vertices=[],faces=[],lookup=new Map(),seen=new Set();
- const idFor=n=>{
-  const x=position.getX(n),y=position.getY(n),z=position.getZ(n);
-  const key=[x,y,z].map(v=>Math.round(v*1e5)).join(',');
-  let id=lookup.get(key);
-  if(id===undefined){id=vertices.length/3;lookup.set(key,id);vertices.push(x,y,z)}
-  return id
- };
- const count=source?source.count:position.count;
- for(let i=0;i+2<count;i+=3){
-  const a=idFor(source?source.getX(i):i),b=idFor(source?source.getX(i+1):i+1),c=idFor(source?source.getX(i+2):i+2);
-  if(a===b||b===c||c===a)continue;
-  const ax=vertices[a*3],ay=vertices[a*3+1],az=vertices[a*3+2],
-        ux=vertices[b*3]-ax,uy=vertices[b*3+1]-ay,uz=vertices[b*3+2]-az,
-        vx=vertices[c*3]-ax,vy=vertices[c*3+1]-ay,vz=vertices[c*3+2]-az,
-        nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
-  if(nx*nx+ny*ny+nz*nz<1e-16)continue;
-  const key=[a,b,c].sort((x,y)=>x-y).join(',');
-  if(seen.has(key))continue;
-  seen.add(key);faces.push(a,b,c)
- }
- const result=new THREE.BufferGeometry();
- result.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
- result.setIndex(faces);result.computeVertexNormals();result.computeBoundingSphere();
- g.dispose();return result
+function inset(){if(!active||!faces.size){notice('Select faces first');return}const base=active.geometry.userData.quads,coords=Array.from(active.geometry.attributes.position.array),q=base.map(f=>f.slice()),chosen=[...faces],seen=new Set();for(const fi of chosen)for(const i of base[fi]){if(seen.has(i)){notice('Inset separate faces only');return}seen.add(i)}
+ for(const fi of chosen){const f=base[fi],center=new THREE.Vector3();for(const i of f)center.add(new THREE.Vector3(...coords.slice(i*3,i*3+3)));center.multiplyScalar(.25);const inner=f.map(i=>{const v=new THREE.Vector3(...coords.slice(i*3,i*3+3)).lerp(center,.22),id=coords.length/3;coords.push(v.x,v.y,v.z);return id});q[fi]=inner;for(let j=0;j<4;j++)q.push([f[j],f[(j+1)%4],inner[(j+1)%4],inner[j]])}
+ checkpoint();replaceMesh(coords,q,chosen);notice('Inset '+chosen.length+' faces')
 }
-function add(type='sphere'){if(layers.length>=12){message('12 layer limit');return}const obj=new THREE.Mesh(geometry(type),material());obj.userData.type=type;obj.userData.label=type[0].toUpperCase()+type.slice(1)+' '+(layers.length+1);if(layers.length)obj.position.x=.28;scene.add(obj);layers.push(obj);select(obj);scheduleSave();message('Shape added')}
-function select(obj){selected=obj;drawLayers();drawGizmo();render()}
-function drawLayers(){const root=$('#layers');root.replaceChildren();layers.forEach((obj,i)=>{const wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:2px;flex:none';const btn=document.createElement('button');btn.textContent=obj.userData.label||'Layer '+(i+1);btn.classList.toggle('active',obj===selected);btn.onclick=()=>select(obj);const del=document.createElement('button');del.textContent='×';del.setAttribute('aria-label','Remove layer');del.onclick=()=>{checkpoint();scene.remove(obj);layers.splice(i,1);obj.geometry.dispose();obj.material.dispose();if(!layers.length)add();else select(layers[Math.min(i,layers.length-1)]);scheduleSave()};wrap.append(btn,del);root.append(wrap)})}
-const gizmo=new THREE.Group();scene.add(gizmo);let gizmoMode='move';
-const colors={x:0xff6969,y:0x6fdda0,z:0x74adff};
-for(const axis of ['x','y','z']){const direction=new THREE.Vector3(axis==='x'?1:0,axis==='y'?1:0,axis==='z'?1:0);const arrow=new THREE.ArrowHelper(direction,new THREE.Vector3(),1.15,colors[axis],.18,.1);arrow.userData.kind='move';gizmo.add(arrow);const ring=new THREE.Mesh(new THREE.TorusGeometry(.9,.012,8,64),new THREE.MeshBasicMaterial({color:colors[axis],transparent:true,opacity:.8}));if(axis==='x')ring.rotation.y=Math.PI/2;if(axis==='y')ring.rotation.x=Math.PI/2;ring.userData.kind='rotate';gizmo.add(ring);const box=new THREE.Mesh(new THREE.BoxGeometry(.12,.12,.12),new THREE.MeshBasicMaterial({color:colors[axis]}));box.position.copy(direction.multiplyScalar(1.05));box.userData.kind='scale';gizmo.add(box)}
-function drawGizmo(){gizmo.visible=tool==='move'&&!!selected;if(!selected)return;selected.updateMatrixWorld(true);selected.getWorldPosition(gizmo.position);gizmo.scale.setScalar(Math.max(.35,camera.position.distanceTo(gizmo.position)*.25));gizmo.children.forEach(c=>c.visible=c.userData.kind===gizmoMode)}
-function setGizmo(mode){gizmoMode=mode;drawGizmo();render()}
-function capture(){return {layers:layers.map(o=>({type:o.userData.type,label:o.userData.label,positions:Array.from(o.geometry.attributes.position.array),quads:o.geometry.userData.quads||null,indices:o.geometry.index?Array.from(o.geometry.index.array):null,position:o.position.toArray(),quaternion:o.quaternion.toArray(),scale:o.scale.toArray()})),selected:Math.max(0,layers.indexOf(selected))}}
-function checkpoint(){undoStack.push(capture());if(undoStack.length>12)undoStack.shift()}
-function restoreData(data){if(!data?.layers?.length||data.layers.length>12)throw Error('Invalid project');const next=[];for(const entry of data.layers){if(!entry.positions||entry.positions.length>500000||entry.positions.length%3)throw Error('Project too large');const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(entry.positions,3));if(entry.indices)g.setIndex(entry.indices);if(entry.quads)g.userData.quads=entry.quads.map(q=>q.slice());g.computeVertexNormals();g.computeBoundingSphere();const quad=ensureQuads(g);const obj=new THREE.Mesh(quad,material());obj.userData.type=entry.type;obj.userData.label=entry.label;obj.position.fromArray(entry.position||[0,0,0]);obj.quaternion.fromArray(entry.quaternion||[0,0,0,1]);obj.scale.fromArray(entry.scale||[1,1,1]);next.push(obj)}for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=next;for(const o of next)scene.add(o);select(next[Math.min(next.length-1,data.selected||0)]);render()}
-function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(capture()))}catch(e){message('Storage full')}},700)}
-function saveProject(){try{const k='mini-clay-project-'+Date.now();localStorage.setItem(k,JSON.stringify(capture()));message('Project saved')}catch(e){message('Could not save project')}}
-function listProjects(){const el=$('#projects');el.hidden=!el.hidden;if(el.hidden)return;el.replaceChildren();const keys=Object.keys(localStorage).filter(k=>k.startsWith('mini-clay-project-')).sort().reverse();for(const k of keys){const row=document.createElement('div');row.className='row';const b=document.createElement('button');b.textContent=new Date(Number(k.split('-').pop())).toLocaleString();b.onclick=()=>{try{checkpoint();restoreData(JSON.parse(localStorage.getItem(k)));scheduleSave();el.hidden=true}catch(e){message(e.message)}};const d=document.createElement('button');d.textContent='Delete';d.onclick=()=>{if(confirm('Delete this project?')){localStorage.removeItem(k);listProjects();listProjects()}};row.append(b,d);el.append(row)}if(!keys.length)el.textContent='No saved projects'}
-function hit(x,y){if(!selected)return null;const r=renderer.domElement.getBoundingClientRect();pointer.set((x-r.left)/r.width*2-1,-(y-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObject(selected);return hits.length?selected.worldToLocal(hits[0].point.clone()):null}
-function topology(g){const a=g.attributes.position,ix=g.index;if(!ix)return null;const edges=new Map(),neighbors=Array.from({length:a.count},()=>new Set()),faces=[];const key=(u,v)=>u<v?u+','+v:v+','+u;for(let i=0;i<ix.count;i+=3){const f=[ix.getX(i),ix.getX(i+1),ix.getX(i+2)];faces.push(f);for(const [u,v] of [[f[0],f[1]],[f[1],f[2]],[f[2],f[0]]]){neighbors[u].add(v);neighbors[v].add(u);const k=key(u,v);let e=edges.get(k);if(!e){e={u,v,faces:[]};edges.set(k,e)}e.faces.push(faces.length-1)}}return {edges,neighbors,faces,key,closed:[...edges.values()].every(e=>e.faces.length===2)}}
-function sculpt(x,y){
- const p=hit(x,y);if(!p||!selected)return;
- const g=selected.geometry,a=g.attributes.position,old=Float32Array.from(a.array),dest=new Float32Array(old);
- const top=topology(g),radius=.10+brush*.62,points=[p];
- if(mirror)points.push(new THREE.Vector3(-p.x,p.y,p.z));
- const normals=g.attributes.normal,fall=new Float32Array(a.count);
- const centerNormal=new THREE.Vector3(),tmp=new THREE.Vector3();
- for(let i=0;i<a.count;i++){
-  const k=i*3;tmp.set(old[k],old[k+1],old[k+2]);let d=Infinity;
-  for(const center of points)d=Math.min(d,tmp.distanceTo(center));
-  if(d>=radius)continue;
-  fall[i]=Math.pow(1-d/radius,1.4);
-  if(tool!=='smooth'&&tool!=='crease')centerNormal.addScaledVector(new THREE.Vector3(normals.getX(i),normals.getY(i),normals.getZ(i)),fall[i])
- }
- centerNormal.normalize();
- if(centerNormal.lengthSq()<.001)centerNormal.set(0,1,0);
- const protectedSet=new Set();
- if(top&&(tool==='smooth'||tool==='crease'))for(const e of top.edges.values())if(e.faces.length!==2){protectedSet.add(e.u);protectedSet.add(e.v)}
- for(let i=0;i<a.count;i++){
-  const f=fall[i];if(!f)continue;const k=i*3;
-  if(tool==='smooth'||tool==='crease'){
-   if(!top||protectedSet.has(i)||top.neighbors[i].size<3)continue;
-   const avg=new THREE.Vector3();
-   for(const j of top.neighbors[i])avg.set(avg.x+old[j*3],avg.y+old[j*3+1],avg.z+old[j*3+2]);
-   avg.multiplyScalar(1/top.neighbors[i].size);
-   const delta=avg.sub(new THREE.Vector3(old[k],old[k+1],old[k+2]));
-   // Preserve most of the volume, but permit some normal motion to round sharp corners.
-   const n=new THREE.Vector3(normals.getX(i),normals.getY(i),normals.getZ(i)).normalize();
-   delta.addScaledVector(n,-delta.dot(n)*(tool==='crease'?.05:.65));
-   const rate=(tool==='crease'?Math.min(.78,.18+strength*.62):Math.min(.62,.12+strength*.48))*f;
-   if(tool==='crease'){
-    // Crease Fix rounds sharp ridges and valleys using normal-inclusive Laplacian smoothing.
-    // Restrict displacement to avoid collapsing nearby thin walls.
-    const maxStep=.022+strength*.038;
-    delta.clampLength(0,maxStep);
-   }
-   for(let j=0;j<3;j++)dest[k+j]+=delta.getComponent(j)*rate;
-  }else{
-   const n=new THREE.Vector3(normals.getX(i),normals.getY(i),normals.getZ(i)).normalize();
-   // Blend local normals toward the brush average to avoid sharp pinched spikes.
-   n.lerp(centerNormal,.8).normalize();
-   const amount=(tool==='add'?1:-1)*(.003+strength*.024)*f;
-   for(let j=0;j<3;j++)dest[k+j]+=n.getComponent(j)*amount
-  }
- }
- a.array.set(dest);a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();render();scheduleSave()
+function bevel(){if(!active){return}if(mode==='face'){inset();return}if(mode!=='edge'||!edges.size){notice('Select edges to bevel');return}
+ // One-segment rounded edge approximation using shared quad subdivision.
+ const old=active.geometry,base=old.userData.quads,coords=Array.from(old.attributes.position.array),initial=coords.slice(),midpoints=new Map(),centers=[],q=[];
+ const pos=i=>new THREE.Vector3(...initial.slice(i*3,i*3+3));
+ const mid=(u,v)=>{const key=edgeKey(u,v);if(midpoints.has(key))return midpoints.get(key);const p=pos(u).add(pos(v)).multiplyScalar(.5),id=coords.length/3;coords.push(p.x,p.y,p.z);midpoints.set(key,id);return id};
+ for(const f of base){const c=new THREE.Vector3();for(const i of f)c.add(pos(i));c.multiplyScalar(.25);const id=coords.length/3;coords.push(c.x,c.y,c.z);centers.push(id)}
+ for(let fi=0;fi<base.length;fi++){const f=base[fi];for(let j=0;j<4;j++)q.push([f[j],mid(f[j],f[(j+1)%4]),centers[fi],mid(f[(j+3)%4],f[j])])}
+ for(const key of edges){const [u,v]=key.split(',').map(Number),touch=[];for(let fi=0;fi<base.length;fi++){const f=base[fi];if(f.some((x,j)=>edgeKey(x,f[(j+1)%4])===key))touch.push(fi)}if(touch.length!==2){notice('Edge must join two faces');return}const center=new THREE.Vector3();for(const fi of touch)center.add(new THREE.Vector3(...coords.slice(centers[fi]*3,centers[fi]*3+3)));center.multiplyScalar(.5);const p=pos(u).add(pos(v)).multiplyScalar(.5).lerp(center,.35),id=midpoints.get(key);coords.splice(id*3,3,p.x,p.y,p.z)}
+ checkpoint();replaceMesh(coords,q);notice('Edge bevel · 1 segment')
 }
-let pullAnchor=null;
-function mirrorSeam(g){
- const p=g.attributes.position,epsilon=.018;
- // Vertices on the symmetry plane must remain exactly on x=0.
- for(let i=0;i<p.count;i++)if(Math.abs(p.getX(i))<epsilon*.35)p.setX(i,0);
- p.needsUpdate=true
-}
-function pullStart(x,y){
- const center=hit(x,y);if(!center||!selected){pullAnchor=null;return}
- const geometry=selected.geometry,p=geometry.attributes.position,normals=geometry.attributes.normal;
- const weights=new Float32Array(p.count),reflected=new Float32Array(p.count);
- const radius=.12+brush*.72,other=center.clone();other.x=-other.x;
- // A rounded, ball-shaped grab: a broad dome at the center with a feathered rim.
- const sphericalFalloff=d=>{
-  if(d>=radius)return 0;
-  const t=d/radius;
-  return Math.pow(Math.max(0,1-t*t),1.65)
- };
- // Prefer the visible surface instead of pulling the opposite side through the sculpture.
- let nearest=0,best=Infinity;
- for(let i=0;i<p.count;i++){
-  const dx=p.getX(i)-center.x,dy=p.getY(i)-center.y,dz=p.getZ(i)-center.z;
-  const d=dx*dx+dy*dy+dz*dz;if(d<best){best=d;nearest=i}
- }
- const facing=new THREE.Vector3(normals.getX(nearest),normals.getY(nearest),normals.getZ(nearest)).normalize();
- for(let i=0;i<p.count;i++){
-  const v=new THREE.Vector3(p.getX(i),p.getY(i),p.getZ(i));
-  const n=new THREE.Vector3(normals.getX(i),normals.getY(i),normals.getZ(i)).normalize();
-  const d=v.distanceTo(center),m=v.distanceTo(other);
-  // Gradually reduce influence on surfaces facing away from the grabbed patch.
-  const front=THREE.MathUtils.smoothstep(n.dot(facing),-.25,.35);
-  weights[i]=sphericalFalloff(d)*front;
-  if(mirror){
-   const reflectedNormal=new THREE.Vector3(-facing.x,facing.y,facing.z);
-   const mirroredFront=THREE.MathUtils.smoothstep(n.dot(reflectedNormal),-.25,.35);
-   reflected[i]=sphericalFalloff(m)*mirroredFront
-  }
- }
- pullAnchor={mesh:selected,weights,reflected}
-}
-function pullDrag(dx,dy){
- if(!pullAnchor||pullAnchor.mesh!==selected)return;
- const g=selected.geometry,p=g.attributes.position,rect=canvas.getBoundingClientRect();
- const factor=2*camera.position.distanceTo(target)*Math.tan(camera.fov*Math.PI/360)/Math.max(1,rect.height);
- const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);
- const movement=right.multiplyScalar(dx*factor).addScaledVector(up,-dy*factor);
- movement.applyQuaternion(selected.getWorldQuaternion(new THREE.Quaternion()).invert());
- movement.multiplyScalar(.25+strength*1.75).clampLength(0,.12);
- for(let i=0;i<p.count;i++){
-  const w=pullAnchor.weights[i],m=mirror?pullAnchor.reflected[i]:0;
-  if(!w&&!m)continue;
-  const sum=Math.max(w,m),sign=w>=m?1:-1;
-  const vx=mirror?movement.x*sign:movement.x;
-  let x=p.getX(i)+vx*sum;
-  if(mirror&&Math.abs(p.getX(i))<.006)x=0;
-  p.setXYZ(i,x,p.getY(i)+movement.y*sum,p.getZ(i)+movement.z*sum)
- }
- if(mirror)mirrorSeam(g);
- p.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();render();scheduleSave()
-}
-function remesh(){if(!selected)return;const g=selected.geometry,t=topology(g);if(!t||!t.closed){message('Remesh stopped: repair open edges first');return}const a=g.attributes.position,verts=Array.from(a.array),faces=t.faces,split=new Set(),mid=new Map(),out=[];const pt=i=>new THREE.Vector3(verts[i*3],verts[i*3+1],verts[i*3+2]);const base=THREE.MathUtils.clamp(.105+Math.sqrt(faces.length/50000)*.055,.11,.19);const normals=faces.map(([a,b,c])=>pt(b).sub(pt(a)).cross(pt(c).sub(pt(a))).normalize());for(const [k,e] of t.edges){const len=pt(e.u).distanceTo(pt(e.v)),angle=Math.acos(THREE.MathUtils.clamp(normals[e.faces[0]].dot(normals[e.faces[1]]),-1,1));if(len>base*(angle>.4?1.15:1.4))split.add(k)}
-if(!split.size){message('Detail already sufficient');return}
-function midpoint(u,v){const k=t.key(u,v);if(mid.has(k))return mid.get(k);const A=pt(u),B=pt(v),id=verts.length/3;verts.push((A.x+B.x)/2,(A.y+B.y)/2,(A.z+B.z)/2);mid.set(k,id);return id}
-for(const [a,b,c] of faces){const ab=split.has(t.key(a,b))?midpoint(a,b):-1,bc=split.has(t.key(b,c))?midpoint(b,c):-1,ca=split.has(t.key(c,a))?midpoint(c,a):-1;const n=(ab>=0)+(bc>=0)+(ca>=0);if(!n)out.push(a,b,c);else if(n===1){if(ab>=0)out.push(a,ab,c,ab,b,c);else if(bc>=0)out.push(b,bc,a,bc,c,a);else out.push(c,ca,b,ca,a,b)}else if(n===2){if(ab<0)out.push(c,ca,bc,ca,a,b,ca,b,bc);else if(bc<0)out.push(a,ab,ca,ab,b,c,ab,c,ca);else out.push(b,bc,ab,bc,c,a,bc,a,ab)}else out.push(a,ab,ca,ab,b,bc,ca,bc,c,ab,bc,ca)}
-if(out.length/3>MAX_FACES){message('Remesh canceled: polygon limit');return}const next=new THREE.BufferGeometry();next.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));next.setIndex(out);if(!topology(next).closed){next.dispose();message('Remesh canceled: topology check');return}next.computeVertexNormals();next.computeBoundingSphere();const quad=ensureQuads(next);checkpoint();selected.geometry=quad;g.dispose();scheduleSave();render();message('Remeshed into '+quad.userData.quads.length+' quads')}
-function retopologize(){
- if(!selected)return;
- const old=selected.geometry,t=topology(old);
- if(!t?.closed){message('Retopology requires a closed mesh');return}
- const a=old.attributes.position,points=Float32Array.from(a.array),out=Float32Array.from(points);
- const normals=a.count,neighbors=t.neighbors;
- for(let i=0;i<normals;i++){
-  const adjacent=neighbors[i];if(adjacent.size<3)continue;
-  const average=new THREE.Vector3();
-  for(const j of adjacent)average.add(new THREE.Vector3(points[j*3],points[j*3+1],points[j*3+2]));
-  average.multiplyScalar(1/adjacent.size);
-  const p=new THREE.Vector3(points[i*3],points[i*3+1],points[i*3+2]);
-  const delta=average.sub(p);
-  const n=new THREE.Vector3(old.attributes.normal.getX(i),old.attributes.normal.getY(i),old.attributes.normal.getZ(i)).normalize();
-  delta.addScaledVector(n,-delta.dot(n));
-  delta.clampLength(0,.018).multiplyScalar(.5);
-  out[i*3]=p.x+delta.x;out[i*3+1]=p.y+delta.y;out[i*3+2]=p.z+delta.z;
- }
- const next=new THREE.BufferGeometry();
- next.setAttribute('position',new THREE.Float32BufferAttribute(out,3));
- next.setIndex(Array.from(old.index.array));if(old.userData.quads)next.userData.quads=old.userData.quads.map(q=>q.slice());
- if(!topology(next)?.closed){next.dispose();message('Retopology canceled: invalid topology');return}
- next.computeVertexNormals();next.computeBoundingSphere();
- checkpoint();selected.geometry=next;old.dispose();render();scheduleSave();
- message('Retopology: vertices redistributed · topology preserved')
-}
-function repairTJunctions(input){
- // Boolean cutters can leave a vertex inside another triangle's edge.
- // Split that edge in every incident face so both sides share identical topology.
- const pos=input.attributes.position.array,indices=Array.from(input.index.array);
- const verts=pos.length/3,grid=new Map(),cell=.075;
- const cellKey=(x,y,z)=>x+','+y+','+z;
- for(let i=0;i<verts;i++){const k=cellKey(Math.floor(pos[i*3]/cell),Math.floor(pos[i*3+1]/cell),Math.floor(pos[i*3+2]/cell));if(!grid.has(k))grid.set(k,[]);grid.get(k).push(i)}
- const edgeMap=new Map(),key=(a,b)=>a<b?a+','+b:b+','+a;
- for(let i=0;i<indices.length;i+=3)for(const [a,b] of [[indices[i],indices[i+1]],[indices[i+1],indices[i+2]],[indices[i+2],indices[i]]])edgeMap.set(key(a,b),[a,b]);
- const splits=new Map(),eps=1e-7;
- for(const [k,[a,b]] of edgeMap){
-  const ax=pos[a*3],ay=pos[a*3+1],az=pos[a*3+2],dx=pos[b*3]-ax,dy=pos[b*3+1]-ay,dz=pos[b*3+2]-az,len2=dx*dx+dy*dy+dz*dz;
-  if(len2<1e-12)continue;
-  const minX=Math.floor(Math.min(ax,ax+dx)/cell),maxX=Math.floor(Math.max(ax,ax+dx)/cell),minY=Math.floor(Math.min(ay,ay+dy)/cell),maxY=Math.floor(Math.max(ay,ay+dy)/cell),minZ=Math.floor(Math.min(az,az+dz)/cell),maxZ=Math.floor(Math.max(az,az+dz)/cell);
-  const found=[];
-  for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)for(let z=minZ;z<=maxZ;z++)for(const v of grid.get(cellKey(x,y,z))||[]){
-   if(v===a||v===b)continue;
-   const px=pos[v*3]-ax,py=pos[v*3+1]-ay,pz=pos[v*3+2]-az,t=(px*dx+py*dy+pz*dz)/len2;
-   if(t<1e-5||t>1-1e-5)continue;
-   const ex=px-t*dx,ey=py-t*dy,ez=pz-t*dz;
-   if(ex*ex+ey*ey+ez*ez<eps*eps)found.push({v,t})
-  }
-  if(found.length){found.sort((u,v)=>u.t-v.t);splits.set(k,[a,...found.map(x=>x.v),b])}
- }
- if(!splits.size)return input;
- const out=[];
- for(let i=0;i<indices.length;i+=3){
-  const tri=indices.slice(i,i+3),polygon=[];
-  for(let j=0;j<3;j++){
-   const a=tri[j],b=tri[(j+1)%3],chain=splits.get(key(a,b));
-   if(!chain){polygon.push(a);continue}
-   const ordered=chain[0]===a?chain:chain.slice().reverse();
-   polygon.push(...ordered.slice(0,-1))
-  }
-  for(let j=1;j<polygon.length-1;j++)out.push(polygon[0],polygon[j],polygon[j+1])
- }
- const result=new THREE.BufferGeometry();
- result.setAttribute('position',input.attributes.position.clone());result.setIndex(out);
- result.computeVertexNormals();result.computeBoundingSphere();input.dispose();return result
-}
-async function fuse(){
- if(layers.length<2){message('Add another shape first');return}
- const button=$('#merge');button.disabled=true;message('Fusing shapes…');
- try{
-  localStorage.setItem(BACKUP,JSON.stringify(capture()));
-  const {Evaluator,Brush,ADDITION}=await import('https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.170.0');
-  let joined=null,lastError='';
-  // Boolean operations on coplanar cube faces are numerically unstable.
-  // Retry with tiny, deterministic offsets rather than destroying the originals.
-  for(const epsilon of [0,.0001,.0006]){
-   let combined=null;
-   try{
-    const evaluator=new Evaluator();evaluator.useGroups=false;evaluator.attributes=['position','normal'];
-    for(let i=0;i<layers.length;i++){
-     const item=layers[i];item.updateMatrixWorld(true);
-     const transformed=item.geometry.clone();transformed.applyMatrix4(item.matrixWorld);
-     const raw=transformed.index?transformed.toNonIndexed():transformed.clone();
-     transformed.dispose();
-     const g=new THREE.BufferGeometry();
-     g.setAttribute('position',raw.attributes.position.clone());raw.dispose();
-     if(i&&epsilon){
-      const p=g.attributes.position;
-      for(let j=0;j<p.count;j++)p.setXYZ(j,p.getX(j)+epsilon*i,p.getY(j)+epsilon*i*.47,p.getZ(j)-epsilon*i*.31);
-      p.needsUpdate=true
-     }
-     g.computeVertexNormals();
-     const operand=new Brush(g,new THREE.MeshStandardMaterial());
-     operand.updateMatrixWorld(true);
-     if(!combined){combined=operand;continue}
-     const next=evaluator.evaluate(combined,operand,ADDITION);
-     combined.geometry.dispose();operand.geometry.dispose();combined=next
-    }
-    if(!combined?.geometry?.attributes?.position)throw Error('Boolean produced no geometry');
-    let candidate=repairTJunctions(weldGeometry(combined.geometry.clone()));
-    combined.geometry.dispose();
-    const t=topology(candidate);
-    const bad=t?[...t.edges.values()].filter(e=>e.faces.length!==2).length:Infinity;
-    if(candidate.index.count/3>MAX_FACES){candidate.dispose();throw Error('Polygon safety limit exceeded')}
-    if(bad){candidate.dispose();throw Error(bad+' open or non-manifold edges')}
-    joined=candidate;break
-   }catch(e){lastError=e.message||String(e);if(combined?.geometry)combined.geometry.dispose()}
-  }
-  if(!joined)throw Error(lastError+' · original layers kept');
-  joined=ensureQuads(joined);
-  checkpoint();
-  const obj=new THREE.Mesh(joined,material());obj.userData.type='merged';obj.userData.label='Fused sculpture';
-  for(const item of layers){scene.remove(item);item.geometry.dispose();item.material.dispose()}
-  layers=[obj];scene.add(obj);select(obj);scheduleSave();
-  message('Fused successfully · '+joined.userData.quads.length+' quads');
- }catch(e){message('Fuse failed: '+e.message);console.error('Fuse error',e)}
- finally{button.disabled=false}
-}
-function sealSymmetryBoundaryHoles(input){
- const t=topology(input);if(!t)return {geometry:input,closed:0};
- const boundary=[...t.edges.values()].filter(e=>e.faces.length===1);
- if(!boundary.length||boundary.length>100)return {geometry:input,closed:0};
- const adj=new Map(),edgeId=(a,b)=>a<b?a+','+b:b+','+a;
- for(const e of boundary){
-  if(!adj.has(e.u))adj.set(e.u,[]);
-  if(!adj.has(e.v))adj.set(e.v,[]);
-  adj.get(e.u).push(e.v);adj.get(e.v).push(e.u)
- }
- // Only repair isolated, simple loops. Branching boundaries need manual repair.
- if([...adj.values()].some(n=>n.length!==2))return {geometry:input,closed:0};
- const visited=new Set(),loops=[];
- for(const e of boundary){
-  if(visited.has(edgeId(e.u,e.v)))continue;
-  const loop=[e.u];let prev=e.u,cur=e.v,valid=true;
-  visited.add(edgeId(prev,cur));
-  while(cur!==loop[0]){
-   if(loop.length>boundary.length){valid=false;break}
-   loop.push(cur);
-   const options=adj.get(cur),next=options[0]===prev?options[1]:options[0];
-   const k=edgeId(cur,next);
-   if(visited.has(k)&&next!==loop[0]){valid=false;break}
-   visited.add(k);prev=cur;cur=next
-  }
-  if(!valid||loop.length<3)return {geometry:input,closed:0};
-  loops.push(loop)
- }
- const pos=input.attributes.position,coords=Array.from(pos.array),faces=Array.from(input.index.array);
- let filled=0;
- for(const loop of loops){
-  // Cap only small holes; never fill the main opening of an incomplete model.
-  const pts=loop.map(i=>new THREE.Vector3(pos.getX(i),pos.getY(i),pos.getZ(i)));
-  const center=new THREE.Vector3();pts.forEach(p=>center.add(p));center.multiplyScalar(1/pts.length);
-  let radius=0;for(const p of pts)radius=Math.max(radius,p.distanceTo(center));
-  const bounds=input.boundingSphere?.radius||1;
-  if(radius>bounds*.16||loop.length>24)continue;
-  const centerId=coords.length/3;coords.push(center.x,center.y,center.z);
-  // Reverse the direction of each existing boundary edge.
-  for(let i=0;i<loop.length;i++){
-   const a=loop[i],b=loop[(i+1)%loop.length];
-   const edge=t.edges.get(edgeId(a,b)),face=t.faces[edge.faces[0]];
-   const forward=face.some((v,j)=>v===a&&face[(j+1)%3]===b);
-   if(forward)faces.push(b,a,centerId);else faces.push(a,b,centerId)
-  }
-  filled++
- }
- if(!filled)return {geometry:input,closed:0};
- const result=new THREE.BufferGeometry();
- result.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));
- result.setIndex(faces);result.computeVertexNormals();result.computeBoundingSphere();
- if(!topology(result)?.closed){result.dispose();return {geometry:input,closed:0}}
- input.dispose();return {geometry:result,closed:filled}
-}
-function postMirror(){
- if(!selected)return;
- const old=selected.geometry,attr=old.attributes.position,idx=old.index;
- if(!idx){message('Symmetrize requires indexed geometry');return}
- const direction=$('#mirrorDirection').value==='negative'?-1:1;
- const eps=1e-7,points=[],faces=[],lookup=new Map(),intersections=new Map();
- const key=p=>[p.x,p.y,p.z].map(v=>Math.round(v*1e6)).join(',');
- const addPoint=p=>{
-  const q=p.clone();if(Math.abs(q.x)<eps)q.x=0;
-  const k=key(q);let id=lookup.get(k);
-  if(id===undefined){id=points.length;points.push(q);lookup.set(k,id)}
-  return id
- };
- const coords=i=>new THREE.Vector3(attr.getX(i)*direction,attr.getY(i),attr.getZ(i));
- const source=Array.from({length:attr.count},(_,i)=>coords(i));
- const sourceIds=source.map(p=>addPoint(p));
- const intersection=(i,j)=>{
-  const k=i<j?i+','+j:j+','+i;
-  if(intersections.has(k))return intersections.get(k);
-  const a=source[i],b=source[j],t=a.x/(a.x-b.x),p=a.clone().lerp(b,t);p.x=0;
-  const id=addPoint(p);intersections.set(k,id);return id
- };
- for(let i=0;i<idx.count;i+=3){
-  const tri=[idx.getX(i),idx.getX(i+1),idx.getX(i+2)],polygon=[];
-  for(let j=0;j<3;j++){
-   const a=tri[j],b=tri[(j+1)%3],x=source[a].x,y=source[b].x;
-   if(x>=0)polygon.push(sourceIds[a]);
-   if((x>0&&y<0)||(x<0&&y>0))polygon.push(intersection(a,b));
-  }
-  const compact=polygon.filter((v,i)=>v!==polygon[(i+polygon.length-1)%polygon.length]);
-  if(compact.length<3)continue;
-  for(let j=1;j<compact.length-1;j++){
-   const f=[compact[0],compact[j],compact[j+1]];
-   if(new Set(f).size!==3)continue;
-   const a=points[f[0]],b=points[f[1]],c=points[f[2]];
-   if(b.clone().sub(a).cross(c.clone().sub(a)).lengthSq()<1e-14)continue;
-   if(f.every(v=>points[v].x===0))continue;
-   faces.push(f)
-  }
- }
- if(!faces.length){message('Symmetrize: selected half is empty');return}
- const halfCount=points.length,mirrorIds=new Array(halfCount);
- for(let i=0;i<halfCount;i++){
-  const p=points[i];mirrorIds[i]=p.x===0?i:addPoint(new THREE.Vector3(-p.x,p.y,p.z))
- }
- const halfFaces=faces.slice();
- for(const f of halfFaces)faces.push([mirrorIds[f[0]],mirrorIds[f[2]],mirrorIds[f[1]]]);
- let output=new THREE.BufferGeometry();const flat=[];
- for(const p of points)flat.push(p.x*direction,p.y,p.z);
- output.setAttribute('position',new THREE.Float32BufferAttribute(flat,3));output.setIndex(faces.flat());
- // Clipping can leave collinear vertices on neighboring edges; resolve T-junctions first.
- output=repairTJunctions(weldGeometry(output));
- const repair=sealSymmetryBoundaryHoles(output);output=repair.geometry;
- const validated=topology(output);
- const open=validated?[...validated.edges.values()].filter(e=>e.faces.length===1).length:0;
- const nonmanifold=validated?[...validated.edges.values()].filter(e=>e.faces.length>2).length:0;
- if(open||nonmanifold||!validated?.closed){output.dispose();message('Symmetrize canceled: '+open+' open, '+nonmanifold+' non-manifold edges. Original kept');return}
- if(output.index.count/3>MAX_FACES){output.dispose();message('Symmetrize exceeds polygon limit');return}
- output.computeVertexNormals();output.computeBoundingSphere();
- let quad;try{quad=ensureQuads(output)}catch(e){output.dispose();message(e.message);return}checkpoint();selected.geometry=quad;old.dispose();render();scheduleSave();
- message('Symmetrized '+(direction<0?'−X → +X':'+X → −X')+' · watertight')
-}
-function center(){target.set(0,0,0);camera.position.set(2,1.3,4.2);camera.lookAt(target);drawGizmo();render()}
-// Direct mesh editing: select faces, edges or vertices and drag in the camera plane.
-let editSelection=[],selectedFaces=new Set(),selectedEdges=new Set(),multiSelect=false,editStart=null,editTransform='translate';
-const editOverlay=new THREE.Group();scene.add(editOverlay);
-function clearEditOverlay(){while(editOverlay.children.length){const c=editOverlay.children.pop();c.parent=null;c.geometry?.dispose();c.material?.dispose()}}
-function positionEditHandle(){
- const handle=$('#editHandle');if(!handle)return;
- if(tool!=='model'||!selected||!editSelection.length){handle.classList.remove('visible');return}
- const a=selected.geometry.attributes.position,center=new THREE.Vector3();
- for(const i of editSelection)center.add(new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)));
- center.multiplyScalar(1/editSelection.length);selected.localToWorld(center);center.project(camera);
- const rect=canvas.getBoundingClientRect();const x=(center.x+1)*rect.width/2,y=(1-center.y)*rect.height/2;
- if(center.z>1||x<0||x>rect.width||y<0||y>rect.height){handle.classList.remove('visible');return}
- handle.style.left=THREE.MathUtils.clamp(x+72,34,rect.width-34)+'px';
- handle.style.top=THREE.MathUtils.clamp(y-68,82,rect.height-34)+'px';
- handle.classList.add('visible')
-}
-function updateEditOverlay(){
- positionEditHandle();
- if($('#quickExtrude'))$('#quickExtrude').disabled=!editSelection.length||$('#editMode').value!=='face';
- clearEditOverlay();if(tool!=='model'||!selected){render();return}
- const a=selected.geometry.attributes.position,quads=selected.geometry.userData.quads||[];
- const lines=[],highlights=[];
- const line=(i,j,out)=>{out.push(a.getX(i),a.getY(i),a.getZ(i),a.getX(j),a.getY(j),a.getZ(j))};
- for(const q of quads)for(let j=0;j<q.length;j++)line(q[j],q[(j+1)%q.length],lines);
- for(const f of selectedFaces){const q=quads[f];if(q)for(let j=0;j<q.length;j++)line(q[j],q[(j+1)%q.length],highlights)}
- if(selectedEdges.size)for(const key of selectedEdges){const [u,v]=key.split(',').map(Number);line(u,v,highlights)}else if(!selectedFaces.size&&editSelection.length>1)for(let j=0;j<editSelection.length-1;j++)line(editSelection[j],editSelection[j+1],highlights);
- const addLines=(data,color,opacity)=>{if(!data.length)return;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));editOverlay.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color,transparent:true,opacity,depthTest:false,depthWrite:false})))};
- addLines(lines,0x323946,.48);addLines(highlights,0xffb45e,1);
- if(selectedFaces.size){
-  const triangles=[];
-  for(const f of selectedFaces){const q=quads[f];if(!q)continue;for(const j of [0,1,2,0,2,3])triangles.push(a.getX(q[j]),a.getY(q[j]),a.getZ(q[j]))}
-  if(triangles.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(triangles,3));g.computeVertexNormals();editOverlay.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0xffae58,transparent:true,opacity:.27,side:THREE.DoubleSide,depthTest:false,depthWrite:false})))}
- }
- selected.updateMatrixWorld(true);editOverlay.position.copy(selected.position);editOverlay.quaternion.copy(selected.quaternion);editOverlay.scale.copy(selected.scale);render()
-}
-const edgeKey=(u,v)=>u<v?u+','+v:v+','+u;
-function modelPick(x,y){
- if(!selected)return;
- const r=canvas.getBoundingClientRect();pointer.set((x-r.left)/r.width*2-1,-(y-r.top)/r.height*2+1);
- ray.setFromCamera(pointer,camera);const hit=ray.intersectObject(selected)[0];
- if(!hit){message('Selection kept · use floating handle');return}
- const index=selected.geometry.index,face=hit.faceIndex;if(face===undefined||!index)return;
- const tri=[index.getX(face*3),index.getX(face*3+1),index.getX(face*3+2)],quads=selected.geometry.userData.quads;
- const faceId=Math.floor(face/2),ids=quads?quads[faceId]:tri,a=selected.geometry.attributes.position;
- const local=selected.worldToLocal(hit.point.clone()),mode=$('#editMode').value;
- if(mode==='face'){
-  selectedEdges.clear();if(!multiSelect)selectedFaces.clear();
-  if(multiSelect&&selectedFaces.has(faceId))selectedFaces.delete(faceId);else selectedFaces.add(faceId);
-  editSelection=[...new Set([...selectedFaces].flatMap(f=>quads?.[f]||[]))]
- }else{
-  selectedFaces.clear();let chosen;
-  if(mode==='vertex')chosen=[ids.reduce((best,i)=>new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)).distanceToSquared(local)<new THREE.Vector3(a.getX(best),a.getY(best),a.getZ(best)).distanceToSquared(local)?i:best,ids[0])];
-  else{let best=Infinity,pair=[ids[0],ids[1]];for(let j=0;j<ids.length;j++){const u=ids[j],v=ids[(j+1)%ids.length],A=new THREE.Vector3(a.getX(u),a.getY(u),a.getZ(u)),B=new THREE.Vector3(a.getX(v),a.getY(v),a.getZ(v)),d=B.clone().sub(A),t=THREE.MathUtils.clamp(local.clone().sub(A).dot(d)/Math.max(d.lengthSq(),1e-9),0,1),dist=local.distanceToSquared(A.addScaledVector(d,t));if(dist<best){best=dist;pair=[u,v]}}chosen=pair}
-  if(mode==='edge'){const key=edgeKey(chosen[0],chosen[1]);if(!multiSelect)selectedEdges.clear();if(multiSelect&&selectedEdges.has(key))selectedEdges.delete(key);else selectedEdges.add(key);editSelection=[...new Set([...selectedEdges].flatMap(k=>k.split(',').map(Number)))]}else{selectedEdges.clear();editSelection=multiSelect?[...new Set([...editSelection,...chosen])]:chosen}
- }
- updateEditOverlay();message(selectedFaces.size+' faces selected'+(multiSelect?' · multi-select':''))
-}
-function modelMirrorPairs(){
- const p=selected.geometry.attributes.position,matched=new Map(),tolerance=.025;
- for(const i of editSelection){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);if(Math.abs(x)<1e-5){matched.set(i,i);continue}let best=-1,d2=tolerance*tolerance;for(let j=0;j<p.count;j++){if(editSelection.includes(j))continue;const dx=p.getX(j)+x,dy=p.getY(j)-y,dz=p.getZ(j)-z,dist=dx*dx+dy*dy+dz*dz;if(dist<d2){d2=dist;best=j}}if(best>=0)matched.set(i,best)}return matched
-}
-function modelDrag(dx,dy){
- if(!selected||!editSelection.length)return;
- const a=selected.geometry.attributes.position,r=canvas.getBoundingClientRect();
- const mirrorPairs=mirror?modelMirrorPairs():null;
- const original=new Map();if(mirrorPairs)for(const j of mirrorPairs.values())original.set(j,[a.getX(j),a.getY(j),a.getZ(j)]);
- const center=new THREE.Vector3();
- for(const i of editSelection)center.add(new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)));
- center.multiplyScalar(1/editSelection.length);
- if(editTransform==='translate'){
-  const factor=2*camera.position.distanceTo(target)*Math.tan(camera.fov*Math.PI/360)/Math.max(1,r.height);
-  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);
-  const shift=right.multiplyScalar(dx*factor).addScaledVector(up,-dy*factor);
-  shift.applyQuaternion(selected.getWorldQuaternion(new THREE.Quaternion()).invert());
-  for(const i of editSelection)a.setXYZ(i,a.getX(i)+shift.x,a.getY(i)+shift.y,a.getZ(i)+shift.z);
- }else if(editTransform==='scale'){
-  const amount=Math.exp((dx-dy)*.009);
-  for(const i of editSelection){
-   const v=new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)).sub(center).multiplyScalar(amount).add(center);
-   a.setXYZ(i,v.x,v.y,v.z)
-  }
- }else{
-  const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion),up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
-  const local=selected.getWorldQuaternion(new THREE.Quaternion()).invert();right.applyQuaternion(local);up.applyQuaternion(local);
-  const q=new THREE.Quaternion().setFromAxisAngle(up,dx*.012).multiply(new THREE.Quaternion().setFromAxisAngle(right,dy*.012));
-  for(const i of editSelection){
-   const v=new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)).sub(center).applyQuaternion(q).add(center);
-   a.setXYZ(i,v.x,v.y,v.z)
-  }
- }
- if(mirrorPairs)for(const [i,j] of mirrorPairs){if(j===i){a.setX(i,0);continue}const old=original.get(j);if(!old)continue;const sx=a.getX(i),sy=a.getY(i),sz=a.getZ(i);a.setXYZ(j,-sx,sy,sz)}
- a.needsUpdate=true;selected.geometry.computeVertexNormals();selected.geometry.computeBoundingSphere();updateEditOverlay();scheduleSave()
-}
-function bevelEdges(){
- if(!selected||!selectedEdges.size){message('Switch to Edge selection and choose edges');return}
- const g=selected.geometry,quads=g.userData.quads;if(!quads)return;
- // Quad subdivision provides enough geometry for a local, rounded edge chamfer.
- const original=Array.from(g.attributes.position.array),coords=original.slice(),edgeMid=new Map(),centers=[],next=[];
- const point=i=>new THREE.Vector3(...original.slice(i*3,i*3+3));
- const mid=(u,v)=>{const k=edgeKey(u,v);if(edgeMid.has(k))return edgeMid.get(k);const p=point(u).add(point(v)).multiplyScalar(.5),id=coords.length/3;coords.push(p.x,p.y,p.z);edgeMid.set(k,id);return id};
- for(const q of quads){const c=new THREE.Vector3();q.forEach(i=>c.add(point(i)));c.multiplyScalar(.25);const id=coords.length/3;coords.push(c.x,c.y,c.z);centers.push(id)}
- for(let f=0;f<quads.length;f++){const q=quads[f],c=centers[f];for(let j=0;j<4;j++)next.push([q[j],mid(q[j],q[(j+1)%4]),c,mid(q[(j+3)%4],q[j])])}
- const affected=new Set();
- for(const key of selectedEdges){const [u,v]=key.split(',').map(Number);if(!edgeMid.has(key)){message('Selected edge not found');return}affected.add(edgeMid.get(key));affected.add(u);affected.add(v)}
- const amount=THREE.MathUtils.clamp(.12+strength*.26,.1,.35);
- // Round the selected edge toward the average of its incident quad centers.
- const shifted=new Map();
- for(const key of selectedEdges){
-  const [u,v]=key.split(',').map(Number),faces=[];
-  for(let f=0;f<quads.length;f++){const q=quads[f];if(q.some((x,j)=>x===u&&q[(j+1)%4]===v||x===v&&q[(j+1)%4]===u))faces.push(f)}
-  if(faces.length!==2){message('Bevel requires an edge shared by two quads');return}
-  const p=point(u).add(point(v)).multiplyScalar(.5),target=new THREE.Vector3();
-  for(const f of faces)target.add(new THREE.Vector3(coords[centers[f]*3],coords[centers[f]*3+1],coords[centers[f]*3+2]));
-  target.multiplyScalar(.5);
-  const id=edgeMid.get(key),vtx=p.lerp(target,amount);
-  shifted.set(id,vtx)
- }
- for(const [i,p] of shifted)coords.splice(i*3,3,p.x,p.y,p.z);
- const result=quadMesh(coords,next);
- if(!topology(result)?.closed){result.dispose();message('Edge bevel canceled: invalid topology');return}
- checkpoint();selected.geometry=result;g.dispose();selectedEdges.clear();selectedFaces.clear();editSelection=[...shifted.keys()];updateEditOverlay();scheduleSave();message('Rounded '+shifted.size+' edge(s) · quad subdivision')
-}
-function modelBevel(){
- if(!selected||$('#editMode').value!=='face'||!selectedFaces.size){message('Select quad faces to bevel');return}
- const g=selected.geometry,quads=g.userData.quads;if(!quads)return;
- const selectedIds=[...selectedFaces],selectedVerts=new Set();
- for(const f of selectedIds)for(const i of quads[f]){if(selectedVerts.has(i)){message('Bevel: select separate faces (no shared corners)');return}selectedVerts.add(i)}
- const coords=Array.from(g.attributes.position.array),q=quads.map(v=>v.slice());
- const amount=THREE.MathUtils.clamp(.07+strength*.2,.04,.24),newFaces=[];
- for(const face of selectedIds){
-  const base=q[face],center=new THREE.Vector3();
-  for(const i of base)center.add(new THREE.Vector3(...coords.slice(i*3,i*3+3)));
-  center.multiplyScalar(.25);
-  const raised=base.map(i=>{const p=new THREE.Vector3(...coords.slice(i*3,i*3+3)).lerp(center,amount),id=coords.length/3;coords.push(p.x,p.y,p.z);return id});
-  q[face]=raised;newFaces.push(face);
-  for(let j=0;j<4;j++)q.push([base[j],base[(j+1)%4],raised[(j+1)%4],raised[j]])
- }
- const next=quadMesh(coords,q);if(!topology(next)?.closed){next.dispose();message('Bevel canceled: invalid topology');return}
- checkpoint();selected.geometry=next;g.dispose();selectedFaces=new Set(newFaces);editSelection=[...new Set(newFaces.flatMap(f=>q[f]))];updateEditOverlay();scheduleSave();message('Inset bevel applied to '+newFaces.length+' face(s)')
-}
-function modelExtrude(){
- if(!selected||$('#editMode').value!=='face'||!selectedFaces.size){message('Select one or more quad faces to extrude');return}
- const g=selected.geometry,quads=g.userData.quads;
- if(!quads){message('Quad extrusion needs a quad mesh');return}
- const selectedIds=new Set(selectedFaces),positions=Array.from(g.attributes.position.array),q=quads.map(v=>v.slice()),a=g.attributes.position;
- if(mirror){
-  for(const face of [...selectedIds]){
-   const source=quads[face];
-   if(source.every(i=>Math.abs(a.getX(i))<.002))continue;
-   const opposite=quads.findIndex((candidate,k)=>k!==face&&candidate.length===4&&source.every(i=>candidate.some(j=>Math.abs(a.getX(j)+a.getX(i))<.002&&Math.abs(a.getY(j)-a.getY(i))<.002&&Math.abs(a.getZ(j)-a.getZ(i))<.002)));
-   if(opposite<0){message('Mirror extrude: missing matching face; original kept');return}
-   selectedIds.add(opposite)
-  }
- }
- // Extrude a connected region as one surface: only boundary edges get side walls.
- const edgeKey=(u,v)=>u<v?u+','+v:v+','+u,edges=new Map(),normals=new Map(),vertexNormals=new Map();
- for(const face of selectedIds){
-  const base=quads[face],A=new THREE.Vector3(...positions.slice(base[0]*3,base[0]*3+3)),B=new THREE.Vector3(...positions.slice(base[1]*3,base[1]*3+3)),C=new THREE.Vector3(...positions.slice(base[2]*3,base[2]*3+3));
-  const normal=B.sub(A).cross(C.sub(A)).normalize();normals.set(face,normal);
-  for(const i of base){if(!vertexNormals.has(i))vertexNormals.set(i,new THREE.Vector3());vertexNormals.get(i).add(normal)}
-  for(let j=0;j<4;j++){const u=base[j],v=base[(j+1)%4],key=edgeKey(u,v);if(!edges.has(key))edges.set(key,{u,v,count:0});edges.get(key).count++}
- }
- const distance=.18+strength*.4,raised=new Map();
- for(const [i,n] of vertexNormals){n.normalize();const p=new THREE.Vector3(...positions.slice(i*3,i*3+3)).addScaledVector(n,distance),id=positions.length/3;positions.push(p.x,p.y,p.z);raised.set(i,id)}
- for(const face of selectedIds)q[face]=quads[face].map(i=>raised.get(i));
- for(const edge of edges.values())if(edge.count===1)q.push([edge.u,edge.v,raised.get(edge.v),raised.get(edge.u)]);
- const next=quadMesh(positions,q);
- if(!topology(next)?.closed){next.dispose();message('Extrude canceled: invalid topology');return}
- checkpoint();selected.geometry=next;g.dispose();selectedFaces=new Set(selectedIds);editSelection=[...new Set([...selectedIds].flatMap(f=>q[f]))];updateEditOverlay();scheduleSave();
- message('Extruded '+selectedIds.size+' quad faces'+(mirror?' with mirror':''))
-}
-const touches=new Map();let previous=null,gesture=null,started=false;
-let handleDrag=null;
-$('#editHandle').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(!editSelection.length)return;$('#editHandle').setPointerCapture(e.pointerId);handleDrag={id:e.pointerId,x:e.clientX,y:e.clientY,started:false}});
-$('#editHandle').addEventListener('pointermove',e=>{if(!handleDrag||e.pointerId!==handleDrag.id)return;e.preventDefault();e.stopPropagation();if(!handleDrag.started){checkpoint();handleDrag.started=true}modelDrag(e.clientX-handleDrag.x,e.clientY-handleDrag.y);handleDrag.x=e.clientX;handleDrag.y=e.clientY});
-for(const name of ['pointerup','pointercancel'])$('#editHandle').addEventListener(name,e=>{if(handleDrag?.id===e.pointerId)handleDrag=null});
-const canvas=renderer.domElement;
-function pointEvent(e){return {x:e.clientX,y:e.clientY}}
-canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);touches.set(e.pointerId,pointEvent(e));previous=null;gesture=null;started=false;if(touches.size>1)pullAnchor=null;if(touches.size===1&&tool==='model'){modelPick(e.clientX,e.clientY);editStart={x:e.clientX,y:e.clientY};}else if(touches.size===1&&tool!=='move'){checkpoint();if(tool==='pull')pullStart(e.clientX,e.clientY);else sculpt(e.clientX,e.clientY)}});
-canvas.addEventListener('pointermove',e=>{if(!touches.has(e.pointerId))return;e.preventDefault();const before=touches.get(e.pointerId);touches.set(e.pointerId,pointEvent(e));const p=[...touches.values()];if(p.length===1){if(tool==='model'){if(editSelection.length){if(!started){checkpoint();started=true}modelDrag(e.clientX-before.x,e.clientY-before.y)}return}if(tool!=='move'){if(tool==='pull')pullDrag(e.clientX-before.x,e.clientY-before.y);else sculpt(e.clientX,e.clientY);return}if(!selected)return;if(!started){checkpoint();started=true}const rect=canvas.getBoundingClientRect(),factor=2*camera.position.distanceTo(target)*Math.tan(camera.fov*Math.PI/360)/rect.height;const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);selected.position.addScaledVector(right,(e.clientX-before.x)*factor).addScaledVector(up,-(e.clientY-before.y)*factor);drawGizmo();render();scheduleSave();return}
-const mid={x:p.reduce((s,q)=>s+q.x,0)/p.length,y:p.reduce((s,q)=>s+q.y,0)/p.length};if(p.length>=3){if(previous){const scale=camera.position.distanceTo(target)*.002;const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);const shift=right.multiplyScalar(-(mid.x-previous.mid.x)*scale).addScaledVector(up,(mid.y-previous.mid.y)*scale);target.add(shift);camera.position.add(shift);camera.lookAt(target)}previous={mid};drawGizmo();render();return}
-const dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),angle=Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x);
-if(!previous){previous={mid,dist,angle,startDist:dist,startMid:mid};return}
-const dx=mid.x-previous.mid.x,dy=mid.y-previous.mid.y,ratio=dist/Math.max(1,previous.dist);
-if(tool==='move'&&selected){if(!gesture){const pinch=Math.abs(Math.log(dist/previous.startDist))*120,pan=Math.hypot(mid.x-previous.startMid.x,mid.y-previous.startMid.y);if(Math.max(pinch,pan)>9){gesture=pinch>pan*1.2?'scale':'rotate';checkpoint();setGizmo(gesture)}}if(gesture==='scale'){selected.scale.multiplyScalar(THREE.MathUtils.clamp(ratio,.94,1.06));selected.scale.clampScalar(.12,8);scheduleSave()}else if(gesture==='rotate'){selected.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),dx*.008));const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);selected.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(right,dy*.008));scheduleSave()}}else{const offset=camera.position.clone().sub(target),radius=THREE.MathUtils.clamp(offset.length()/THREE.MathUtils.clamp(ratio,.8,1.2),1.2,18),theta=Math.atan2(offset.x,offset.z)-dx*.008,phi=THREE.MathUtils.clamp(Math.acos(THREE.MathUtils.clamp(offset.y/offset.length(),-1,1))-dy*.008,.12,Math.PI-.12);camera.position.set(target.x+radius*Math.sin(phi)*Math.sin(theta),target.y+radius*Math.cos(phi),target.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(target)}
-previous={...previous,mid,dist,angle};drawGizmo();render()});
-function release(e){touches.delete(e.pointerId);pullAnchor=null;previous=null;gesture=null;started=false;if(tool==='move')setGizmo('move')}
-canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
-function syncQuickUI(){document.body.classList.toggle('model-mode',tool==='model');$('#quickMode').textContent=tool==='model'?'⬡ Model ✓':'⬡ Model';$('#quickMode').classList.toggle('active',tool==='model');$('#quickExtrude').disabled=!editSelection.length||$('#editMode').value!=='face'}
-document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;$('#modelControls').hidden=tool!=='model';$('#modelControls2').hidden=tool!=='model';editSelection=[];selectedFaces.clear();selectedEdges.clear();updateEditOverlay();document.querySelectorAll('[data-tool]').forEach(x=>x.classList.toggle('active',x===b));setGizmo('move');syncQuickUI();message(tool==='move'?'Move: 1 finger translate · 2 rotate/scale':'Sculpt mode')});
-document.querySelectorAll('[data-transform]').forEach(b=>b.onclick=()=>{editTransform=b.dataset.transform;document.querySelectorAll('[data-transform]').forEach(x=>x.classList.toggle('active',x===b));message('Quad transform: '+editTransform+' · drag selected geometry')});
-$('#quickMode').onclick=()=>document.querySelector('[data-tool="'+(tool==='model'?'add':'model')+'"]').click();$('#quickExtrude').onclick=()=>modelExtrude();$('#quickUndo').onclick=()=>$('#undo').click();$('#quickTools').onclick=()=>$('#handle').click();
-$('#handle').onclick=()=>{$('#panel').classList.toggle('closed');$('#handle').textContent=$('#panel').classList.contains('closed')?'⌃ Tools · Tap to expand':'⌄ Tools · Tap to collapse'};
-function syncMirror(){ $('#mirror').textContent='⇄ Mirror: '+(mirror?'On':'Off');$('#quickMirror').textContent=mirror?'⇄ On':'⇄ Off';$('#quickMirror').classList.toggle('active',mirror);localStorage.setItem('mini-clay-mirror',mirror?'on':'off') }
-$('#mirror').onclick=()=>{mirror=!mirror;syncMirror()};$('#quickMirror').onclick=()=>$('#mirror').click();syncMirror();
-$('#postmirror').onclick=postMirror;$('#addshape').onclick=()=>add($('#shape').value);$('#merge').onclick=fuse;$('#remesh').onclick=remesh;$('#retopo').onclick=retopologize;
-for(const [id,output,set] of [['size','sizeout',x=>brush=x],['strength','strengthout',x=>strength=x]]){$('#'+id).oninput=e=>{const n=Number(e.target.value);set(n/100);$('#'+output).textContent=n}}
-$('#editMode').onchange=()=>{editSelection=[];selectedFaces.clear();selectedEdges.clear();updateEditOverlay()};$('#extrude').onclick=modelExtrude;$('#bevel').onclick=()=>$('#editMode').value==='edge'?bevelEdges():modelBevel;$('#quickBevel').onclick=()=>$('#bevel').click();function toggleMulti(){multiSelect=!multiSelect;$('#multiSelect').textContent='＋ Multi: '+(multiSelect?'On':'Off');$('#multiSelect').classList.toggle('active',multiSelect);$('#quickMulti').textContent=multiSelect?'＋ Multi ✓':'＋ Multi';$('#quickMulti').classList.toggle('active',multiSelect)}$('#multiSelect').onclick=toggleMulti;$('#quickMulti').onclick=toggleMulti;$('#clearSelection').onclick=()=>{editSelection=[];selectedFaces.clear();updateEditOverlay()};$('#grow').onclick=()=>{if(!selected||!editSelection.length)return;const t=topology(selected.geometry),all=new Set(editSelection);for(const i of editSelection)for(const j of t.neighbors[i])all.add(j);editSelection=[...all];updateEditOverlay()};
-$('#undo').onclick=()=>{if(!undoStack.length){message('Nothing to undo');return}const data=undoStack.pop();restoreData(data);scheduleSave();message('Undone')};
-$('#center').onclick=center;$('#new').onclick=()=>{if(!confirm('Start a new sculpture?'))return;checkpoint();for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=[];add('box');center()};
-$('#save').onclick=saveProject;$('#projectsbtn').onclick=listProjects;$('#backup').onclick=()=>{const raw=localStorage.getItem(BACKUP);if(!raw){message('No fuse backup available');return}if(confirm('Restore the layers from before your last fusion?')){checkpoint();restoreData(JSON.parse(raw));scheduleSave();message('Fusion backup restored')}};
-try{const raw=localStorage.getItem(KEY)||localStorage.getItem('mini-clay-current');if(raw){const data=JSON.parse(raw);if(data.layers?.length){if(data.layers[0].translation&&!data.layers[0].position){for(const item of data.layers){item.position=item.translation;item.quaternion=new THREE.Quaternion().setFromEuler(new THREE.Euler(...(item.rotation||[0,0,0]))).toArray()}}restoreData(data)}else add('box')}else add('box')}catch(e){console.error(e);add('box');message('New sculpture ready')}
-center();resize();message('Ready · v2.12.0');
+function download(){const blob=new Blob([JSON.stringify(serialize())],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='mini-blender.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
+for(const b of document.querySelectorAll('[data-mode]'))b.onclick=()=>{mode=b.dataset.mode;for(const x of document.querySelectorAll('[data-mode]'))x.classList.toggle('active',x===b);faces.clear();edges.clear();vertices.clear();overlayUpdate();notice(mode+' selection')};
+for(const b of document.querySelectorAll('[data-op]'))b.onclick=()=>{op=b.dataset.op;for(const x of document.querySelectorAll('[data-op]'))x.classList.toggle('active',x===b)};
+$('#multi').onclick=()=>{multi=!multi;$('#multi').classList.toggle('active',multi);$('#multi').textContent=multi?'＋ Multi ✓':'＋ Multi'};
+$('#mirror').onclick=()=>{mirror=!mirror;localStorage.setItem('mini-blender-mirror',mirror?'on':'off');$('#mirror').classList.toggle('active',mirror);$('#mirror').textContent='⇄ Mirror '+(mirror?'On':'Off')};
+$('#mirror').classList.toggle('active',mirror);$('#mirror').textContent='⇄ Mirror '+(mirror?'On':'Off');
+$('#undo').onclick=undo;$('#redo').onclick=redo;$('#extrude').onclick=extrude;$('#inset').onclick=inset;$('#bevel').onclick=bevel;
+$('#more').onclick=()=>$('#extra').classList.toggle('open');
+$('#view').onclick=()=>{target.copy(active?.position||new THREE.Vector3());spherical.radius=5;render()};
+$('#cube').onclick=()=>{checkpoint();addCube(meshes.length*1.8);autosave();notice('Cube added')};
+$('#duplicate').onclick=()=>{if(!active)return;checkpoint();const m=new THREE.Mesh(active.geometry.clone(),mat());m.geometry.userData.quads=active.geometry.userData.quads.map(f=>f.slice());m.position.copy(active.position).add(new THREE.Vector3(1.7,0,0));m.quaternion.copy(active.quaternion);m.scale.copy(active.scale);scene.add(m);meshes.push(m);selectObject(m);autosave()};
+$('#delete').onclick=()=>{if(!active)return;checkpoint();scene.remove(active);meshes.splice(meshes.indexOf(active),1);active.geometry.dispose();active.material.dispose();selectObject(meshes[0]||null);autosave()};
+$('#reset').onclick=()=>{if(!confirm('Start a new scene? Undo can restore the previous scene.'))return;checkpoint();restore({meshes:[],active:-1});addCube();autosave()};
+$('#save').onclick=download;
+$('#load').onclick=()=>{const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=async()=>{try{const data=JSON.parse(await input.files[0].text());if(!Array.isArray(data.meshes)||data.meshes.length>50||data.meshes.some(m=>!Array.isArray(m.positions)||!Array.isArray(m.quads)||m.positions.length>300000||m.quads.length>100000))throw Error('Invalid project');checkpoint();restore(data);autosave();notice('Project loaded')}catch(e){notice('Could not load project')}};input.click()};
+$('#wire').onclick=()=>{wire=!wire;overlayUpdate()};
+const pointers=new Map();let pointerGesture=null;
+function localPoint(e){return {x:e.clientX,y:e.clientY}}
+renderer.domElement.addEventListener('pointerdown',e=>{e.preventDefault();renderer.domElement.setPointerCapture(e.pointerId);pointers.set(e.pointerId,localPoint(e));if(pointers.size===1){pointerGesture={x:e.clientX,y:e.clientY,moved:false}}else pointerGesture=null});
+renderer.domElement.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;e.preventDefault();const before=pointers.get(e.pointerId);pointers.set(e.pointerId,localPoint(e));const p=[...pointers.values()];if(p.length===1){if(pointerGesture&&Math.hypot(e.clientX-pointerGesture.x,e.clientY-pointerGesture.y)>7)pointerGesture.moved=true;return}
+ if(p.length===2){const prev=[...pointers.entries()].map(([id,point])=>id===e.pointerId?before:point),oldDist=Math.hypot(prev[0].x-prev[1].x,prev[0].y-prev[1].y),newDist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);spherical.radius=THREE.MathUtils.clamp(spherical.radius*Math.exp((oldDist-newDist)*.004),1.3,35);spherical.theta-=(e.clientX-before.x)*.008;spherical.phi=THREE.MathUtils.clamp(spherical.phi+(e.clientY-before.y)*.008,.08,Math.PI-.08);render()}
+ if(p.length>=3){const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);target.addScaledVector(right,-(e.clientX-before.x)*spherical.radius*.002).addScaledVector(up,(e.clientY-before.y)*spherical.radius*.002);render()}
+});
+renderer.domElement.addEventListener('pointerup',e=>{if(pointers.size===1&&pointerGesture&&!pointerGesture.moved)pick(e.clientX,e.clientY);pointers.delete(e.pointerId);pointerGesture=null});
+renderer.domElement.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);pointerGesture=null});
+const h=$('#gizmo');h.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();h.setPointerCapture(e.pointerId);checkpoint();handleDrag={id:e.pointerId,x:e.clientX,y:e.clientY}});h.addEventListener('pointermove',e=>{if(!handleDrag||e.pointerId!==handleDrag.id)return;e.preventDefault();transform(e.clientX-handleDrag.x,e.clientY-handleDrag.y);handleDrag.x=e.clientX;handleDrag.y=e.clientY});for(const ev of ['pointerup','pointercancel'])h.addEventListener(ev,e=>{if(handleDrag?.id===e.pointerId)handleDrag=null});
+try{const stored=localStorage.getItem('mini-blender-project');if(stored)restore(JSON.parse(stored));else addCube()}catch(e){addCube()}resize();overlayUpdate();
 </script></body></html>
