@@ -21,7 +21,7 @@ function resize(){const rect=stage.getBoundingClientRect();const w=Math.max(1,re
 new ResizeObserver(resize).observe(stage);sphere();resize();center();if(!restore('mini-clay-current'))status.textContent='Ready';
 const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),local=new THREE.Vector3();
 function hit(x,y){const rect=renderer.domElement.getBoundingClientRect();pointer.set(((x-rect.left)/rect.width)*2-1,1-((y-rect.top)/rect.height)*2);raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObject(mesh);if(!hits.length)return null;return mesh.worldToLocal(hits[0].point.clone())}
-function sculpt(x,y){const point=hit(x,y);if(!point)return;if(dyntopo&&performance.now()-lastRefine>120){refine(point);lastRefine=performance.now()}const geo=mesh.geometry,attr=geo.attributes.position;const radius=.08+brush*.5;const intensity=.004+strength*.025;const norm=point.clone().normalize();for(let i=0;i<attr.count;i++){local.fromBufferAttribute(attr,i);const dist=local.distanceTo(point);if(dist>radius)continue;const fall=Math.pow(1-dist/radius,2);const outward=local.clone().normalize();if(tool==='smooth'){const target=1.15;local.addScaledVector(outward,(target-local.length())*fall*strength*.09)}else{local.addScaledVector(outward,(tool==='add'?1:-1)*fall*intensity)}attr.setXYZ(i,local.x,local.y,local.z)}attr.needsUpdate=true;geo.computeVertexNormals();geo.computeBoundingSphere();render();queueSave()}
+function sculpt(x,y){const point=hit(x,y);if(!point)return;if(dyntopo&&performance.now()-lastRefine>120){refine(point);lastRefine=performance.now()}const geo=mesh.geometry,attr=geo.attributes.position;const radius=.08+brush*.5;const intensity=.002+strength*.012;const norm=point.clone().normalize();for(let i=0;i<attr.count;i++){local.fromBufferAttribute(attr,i);const dist=local.distanceTo(point);if(dist>radius)continue;const fall=Math.pow(1-dist/radius,2);const outward=local.clone().normalize();if(tool==='smooth'){const target=1.15;local.addScaledVector(outward,(target-local.length())*fall*strength*.09)}else{local.addScaledVector(outward,(tool==='add'?1:-1)*fall*intensity)}attr.setXYZ(i,local.x,local.y,local.z)}attr.needsUpdate=true;geo.computeVertexNormals();geo.computeBoundingSphere();render();queueSave()}
 function updateCount(){const g=mesh.geometry;status.textContent=(g.index?g.index.count/3:g.attributes.position.count/3).toLocaleString()+' polys'}
 function refine(point){
 const geo=mesh.geometry,attr=geo.attributes.position,idx=geo.index;if(!idx)return;
@@ -55,9 +55,12 @@ for(let i=0;i<ids.length;i+=3){
  const ab=splitEdges.has(edgeKey(a,b))?midpoint(a,b):-1;
  const bc=splitEdges.has(edgeKey(b,c))?midpoint(b,c):-1;
  const ca=splitEdges.has(edgeKey(c,a))?midpoint(c,a):-1;
- // Triangulate the complete boundary; adjacent triangles use identical edge midpoints.
+ // Split using a triangle interior vertex: avoids collinear and overlapping fan triangles.
+ if(ab<0&&bc<0&&ca<0){newIndices.push(a,b,c);continue}
+ const center=verts.length/3;
+ for(let k=0;k<3;k++)verts.push((verts[a*3+k]+verts[b*3+k]+verts[c*3+k])/3);
  const ring=[a];if(ab>=0)ring.push(ab);ring.push(b);if(bc>=0)ring.push(bc);ring.push(c);if(ca>=0)ring.push(ca);
- for(let j=1;j<ring.length-1;j++)newIndices.push(ring[0],ring[j],ring[j+1]);
+ for(let j=0;j<ring.length;j++)newIndices.push(center,ring[j],ring[(j+1)%ring.length]);
 }
 if(newIndices.length/3>maxTris)return;
 const next=new THREE.BufferGeometry();
