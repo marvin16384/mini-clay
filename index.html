@@ -7,7 +7,7 @@
 #panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:54px;overflow:hidden}#panel.closed>*:not(#handle){display:none!important}#panel [hidden]{display:none!important}#quickbar{position:absolute;top:12px;left:10px;right:10px;display:flex;gap:7px;z-index:3;pointer-events:none}#quickbar button{pointer-events:auto;min-height:43px;padding:8px 12px;background:#272a33e8;backdrop-filter:blur(12px);box-shadow:0 3px 12px #0005}#quickbar button.active{background:#775b49}#quickbar .spacer{flex:1}#quickExtrude,#transformBar{display:none}body.model-mode #quickExtrude{display:block}body.model-mode #transformBar{display:flex}#transformBar{gap:4px}#transformBar button{font-size:12px;padding:8px 7px!important}#transformBar button.active{background:#775b49}.tools{grid-template-columns:repeat(4,minmax(0,1fr))!important}.tools button{padding:9px 3px;font-size:12px}#panel:not(.closed){max-height:min(55dvh,510px)}#handle{position:sticky;top:0;z-index:2;background:#1b1d24!important}
 button,select{font:inherit;color:#f1ede9;background:#30333d;border:1px solid #4b4e59;border-radius:11px;padding:10px 6px;touch-action:manipulation}button.active{background:#775b49;border-color:#d6ac88}button:disabled{opacity:.45}#handle{display:block;width:100%;background:transparent;border:0;color:#e4b994;padding:5px 0 11px;font-weight:700}
 .tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1;min-width:0}#layers{display:flex;gap:6px;overflow-x:auto;padding:9px 0}#layers button{white-space:nowrap;flex:none;padding:8px 10px}label{display:flex;justify-content:space-between;margin:11px 0 3px}input[type=range]{width:100%;accent-color:#d4a07a}#projects{max-height:140px;overflow:auto}
-</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.10.1</div></div><div id="status">Starting…</div></header><main id="stage"><div id="quickbar"><button id="quickMode">⬡ Model</button><button id="quickMirror">⇄ On</button><button id="quickExtrude">⇧ Extrude</button><div id="transformBar"><button data-transform="translate" class="active">↔ Move</button><button data-transform="rotate">⟳ Rotate</button><button data-transform="scale">⤢ Scale</button></div><span class="spacer"></span><button id="quickUndo">↶</button><button id="quickTools">☷ Tools</button></div><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel" class="closed"><button id="handle">⌃ Tools · Tap to expand</button>
+</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.10.2</div></div><div id="status">Starting…</div></header><main id="stage"><div id="quickbar"><button id="quickMode">⬡ Model</button><button id="quickMirror">⇄ On</button><button id="quickExtrude">⇧ Extrude</button><div id="transformBar"><button data-transform="translate" class="active">↔ Move</button><button data-transform="rotate">⟳ Rotate</button><button data-transform="scale">⤢ Scale</button></div><span class="spacer"></span><button id="quickUndo">↶</button><button id="quickTools">☷ Tools</button></div><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel" class="closed"><button id="handle">⌃ Tools · Tap to expand</button>
 <div class="tools"><button data-tool="add" class="active">＋ Add</button><button data-tool="carve">－ Carve</button><button data-tool="smooth">≈ Smooth</button><button data-tool="crease">⌁ Crease Fix</button><button data-tool="pull">↗ Pull</button><button data-tool="move">✥ Move</button><button data-tool="model">⬡ Model</button></div>
 <div class="row"><button id="mirror">⇄ Mirror: Off</button><select id="mirrorDirection" aria-label="Post Mirror direction"><option value="positive">+X → −X</option><option value="negative">−X → +X</option></select><button id="postmirror">⇥ Symmetrize</button></div>
 <div class="row"><button id="addshape">＋ Shape</button><select id="shape"><option value="sphere">Sphere</option><option value="box">Box</option><option value="cylinder">Cylinder</option><option value="torus">Torus</option></select></div>
@@ -547,17 +547,27 @@ function modelExtrude(){
  if(!quads){message('Quad extrusion needs a quad mesh. Add a Box to begin.');return}
  const face=quads.findIndex(q=>q.length===editSelection.length&&q.every(i=>editSelection.includes(i)));
  if(face<0){message('Select a quad face');return}
- const old=Array.from(g.attributes.position.array),q=quads.map(v=>v.slice()),base=q[face];
- const A=new THREE.Vector3(...old.slice(base[0]*3,base[0]*3+3));
- const B=new THREE.Vector3(...old.slice(base[1]*3,base[1]*3+3));
- const C=new THREE.Vector3(...old.slice(base[2]*3,base[2]*3+3));
- const n=B.sub(A).cross(C.sub(A)).normalize(),distance=.18+strength*.4;
- const raised=base.map(i=>{const v=new THREE.Vector3(...old.slice(i*3,i*3+3)).addScaledVector(n,distance),id=old.length/3;old.push(v.x,v.y,v.z);return id});
- q[face]=raised;
- for(let j=0;j<4;j++)q.push([base[j],base[(j+1)%4],raised[(j+1)%4],raised[j]]);
- const next=quadMesh(old,q);
+ const positions=Array.from(g.attributes.position.array),q=quads.map(v=>v.slice());
+ const source=q[face],a=g.attributes.position;
+ const opposite=mirror?quads.findIndex((candidate,k)=>{
+  if(k===face||candidate.length!==4)return false;
+  return source.every(i=>candidate.some(j=>Math.abs(a.getX(j)+a.getX(i))<.002&&Math.abs(a.getY(j)-a.getY(i))<.002&&Math.abs(a.getZ(j)-a.getZ(i))<.002))
+ }): -1;
+ if(mirror&&opposite<0&&source.some(i=>Math.abs(a.getX(i))>.002)){message('Mirror extrude: no matching opposite face; original kept');return}
+ const extrudeFace=(faceId,offset)=>{
+  const base=q[faceId],A=new THREE.Vector3(...positions.slice(base[0]*3,base[0]*3+3)),B=new THREE.Vector3(...positions.slice(base[1]*3,base[1]*3+3)),C=new THREE.Vector3(...positions.slice(base[2]*3,base[2]*3+3));
+  const n=B.sub(A).cross(C.sub(A)).normalize();
+  const raised=base.map(i=>{const v=new THREE.Vector3(...positions.slice(i*3,i*3+3)).addScaledVector(n,offset),id=positions.length/3;positions.push(v.x,v.y,v.z);return id});
+  q[faceId]=raised;
+  for(let j=0;j<4;j++)q.push([base[j],base[(j+1)%4],raised[(j+1)%4],raised[j]]);
+  return raised
+ };
+ const distance=.18+strength*.4,raised=extrudeFace(face,distance);
+ if(opposite>=0)extrudeFace(opposite,distance);
+ const next=quadMesh(positions,q);
  if(!topology(next)?.closed){next.dispose();message('Extrude canceled: mesh would open');return}
- checkpoint();selected.geometry=next;g.dispose();editSelection=raised;updateEditOverlay();scheduleSave();message('Quad face extruded')
+ checkpoint();selected.geometry=next;g.dispose();editSelection=raised;updateEditOverlay();scheduleSave();
+ message(opposite>=0?'Mirrored quad faces extruded':'Quad face extruded')
 }
 const touches=new Map();let previous=null,gesture=null,started=false;
 const canvas=renderer.domElement;
@@ -586,5 +596,5 @@ $('#undo').onclick=()=>{if(!undoStack.length){message('Nothing to undo');return}
 $('#center').onclick=center;$('#new').onclick=()=>{if(!confirm('Start a new sculpture?'))return;checkpoint();for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=[];add('box');center()};
 $('#save').onclick=saveProject;$('#projectsbtn').onclick=listProjects;$('#backup').onclick=()=>{const raw=localStorage.getItem(BACKUP);if(!raw){message('No fuse backup available');return}if(confirm('Restore the layers from before your last fusion?')){checkpoint();restoreData(JSON.parse(raw));scheduleSave();message('Fusion backup restored')}};
 try{const raw=localStorage.getItem(KEY)||localStorage.getItem('mini-clay-current');if(raw){const data=JSON.parse(raw);if(data.layers?.length){if(data.layers[0].translation&&!data.layers[0].position){for(const item of data.layers){item.position=item.translation;item.quaternion=new THREE.Quaternion().setFromEuler(new THREE.Euler(...(item.rotation||[0,0,0]))).toArray()}}restoreData(data)}else add('box')}else add('box')}catch(e){console.error(e);add('box');message('New sculpture ready')}
-center();resize();message('Ready · v2.10.1');
+center();resize();message('Ready · v2.10.2');
 </script></body></html>
