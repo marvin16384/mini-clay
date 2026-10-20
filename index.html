@@ -23,7 +23,25 @@ function resize(){const rect=stage.getBoundingClientRect();const w=Math.max(1,re
 new ResizeObserver(resize).observe(stage);sphere();resize();center();if(!restore('mini-clay-current'))status.textContent='Ready';
 const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),local=new THREE.Vector3();
 function hit(x,y){const rect=renderer.domElement.getBoundingClientRect();pointer.set(((x-rect.left)/rect.width)*2-1,1-((y-rect.top)/rect.height)*2);raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObject(mesh);if(!hits.length)return null;return mesh.worldToLocal(hits[0].point.clone())}
-function sculpt(x,y){const point=hit(x,y);if(!point)return;if(dyntopo&&performance.now()-lastRefine>120){refine(point);lastRefine=performance.now()}const geo=mesh.geometry,attr=geo.attributes.position;const radius=.08+brush*.5;const intensity=.002+strength*.012;const norm=point.clone().normalize();for(let i=0;i<attr.count;i++){local.fromBufferAttribute(attr,i);const dist=local.distanceTo(point);if(dist>radius)continue;const fall=Math.pow(1-dist/radius,2);const outward=local.clone().normalize();if(tool==='smooth'){const target=1.15;local.addScaledVector(outward,(target-local.length())*fall*strength*.09)}else{local.addScaledVector(outward,(tool==='add'?1:-1)*fall*intensity)}attr.setXYZ(i,local.x,local.y,local.z)}attr.needsUpdate=true;geo.computeVertexNormals();geo.computeBoundingSphere();render();queueSave()}
+function sculpt(x,y){
+const point=hit(x,y);if(!point)return;
+if(dyntopo&&performance.now()-lastRefine>95){refine(point);lastRefine=performance.now()}
+const geo=mesh.geometry,attr=geo.attributes.position,radius=.08+brush*.5,intensity=.002+strength*.012;
+let smoothTargets=null;
+if(tool==='smooth'){
+ const neighbors=Array.from({length:attr.count},()=>new Set()),idx=geo.index;
+ if(idx){const ids=idx.array;for(let j=0;j<ids.length;j+=3){const a=ids[j],b=ids[j+1],c=ids[j+2];neighbors[a].add(b);neighbors[a].add(c);neighbors[b].add(a);neighbors[b].add(c);neighbors[c].add(a);neighbors[c].add(b)}}
+ smoothTargets=neighbors.map((set,i)=>{const p=new THREE.Vector3().fromBufferAttribute(attr,i);if(!set.size)return p;const avg=new THREE.Vector3();for(const j of set)avg.add(new THREE.Vector3().fromBufferAttribute(attr,j));avg.multiplyScalar(1/set.size);return avg});
+}
+for(let i=0;i<attr.count;i++){
+ local.fromBufferAttribute(attr,i);const dist=local.distanceTo(point);if(dist>radius)continue;
+ const fall=Math.pow(1-dist/radius,2);
+ if(tool==='smooth'){local.lerp(smoothTargets[i],Math.min(.45,fall*strength*.38))}
+ else{const outward=local.clone().normalize();local.addScaledVector(outward,(tool==='add'?1:-1)*fall*intensity)}
+ attr.setXYZ(i,local.x,local.y,local.z)
+}
+attr.needsUpdate=true;geo.computeVertexNormals();geo.computeBoundingSphere();render();queueSave()
+}
 function updateCount(){const g=mesh.geometry;status.textContent=(g.index?g.index.count/3:g.attributes.position.count/3).toLocaleString()+' polys'}
 function refine(point){
 const geo=mesh.geometry,attr=geo.attributes.position,idx=geo.index;if(!idx)return;
@@ -38,14 +56,14 @@ for(let i=0;i<attr.count;i++){
  if(id===undefined){id=verts.length/3;verts.push(x,y,z);weld.set(key,id)}
  remap[i]=id;
 }
-const ids=Array.from(idx.array,v=>remap[v]),splitEdges=new Set(),radius=.08+brush*.5,threshold=.13-detail*.095;
+const ids=Array.from(idx.array,v=>remap[v]),splitEdges=new Set(),radius=.08+brush*.5,threshold=(.13-detail*.095)*(tool==='smooth'?1.18:tool==='carve'?.86:1);
 const edgeKey=(a,b)=>a<b?a+','+b:b+','+a;
 const length=(a,b)=>Math.hypot(verts[a*3]-verts[b*3],verts[a*3+1]-verts[b*3+1],verts[a*3+2]-verts[b*3+2]);
 let marked=0;
 for(let i=0;i<ids.length;i+=3){
  const a=ids[i],b=ids[i+1],c=ids[i+2];
  const x=(verts[a*3]+verts[b*3]+verts[c*3])/3,y=(verts[a*3+1]+verts[b*3+1]+verts[c*3+1])/3,z=(verts[a*3+2]+verts[b*3+2]+verts[c*3+2])/3;
- if(Math.hypot(x-point.x,y-point.y,z-point.z)>radius*1.3)continue;
+ if(Math.hypot(x-point.x,y-point.y,z-point.z)>radius*(tool==='carve'?1.65:1.3))continue;
  for(const [u,v] of [[a,b],[b,c],[c,a]])if(length(u,v)>threshold)splitEdges.add(edgeKey(u,v));
  marked++;
 }
