@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#17191f"><title>Mini Blender · Mobile</title><style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}body{margin:0;background:#17191f;color:#eef0f5;overflow:hidden}button,select,input{font:inherit;color:inherit}button{border:1px solid #424854;background:#2c303b;border-radius:11px;padding:10px 12px;touch-action:manipulation;white-space:nowrap}button.active{background:#d28b45;color:#1b1b1b;border-color:#e6ac6d}button:disabled{opacity:.35}select{background:#30343e;border:1px solid #4b5260;border-radius:10px;padding:9px}#app{height:100dvh;display:flex;flex-direction:column}header{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:#20232b;border-bottom:1px solid #343945}header strong{font-size:16px}small{font-size:11px;color:#aab1bf}#viewport{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none}canvas{display:block;width:100%;height:100%;touch-action:none}#top{position:absolute;top:9px;left:9px;right:9px;display:flex;gap:6px;align-items:center;pointer-events:none;overflow-x:auto;scrollbar-width:none}#top>*{pointer-events:auto}#top button{padding:8px 10px;background:#303540e8;backdrop-filter:blur(9px)}#top button.active{background:#d28b45}#hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#191c22b8;border-radius:12px;padding:6px 11px;color:#d0d4dc;font-size:11px;pointer-events:none;white-space:nowrap}#gizmo{position:absolute;display:none;width:54px;height:54px;border-radius:50%;background:#dc9b50e8;color:#161719;border:2px solid #ffe0a8;transform:translate(-50%,-50%);font-size:24px;touch-action:none;z-index:3;box-shadow:0 5px 18px #0008}#gizmo.visible{display:block}#bottom{background:#222630;border-top:1px solid #414752;padding:8px 8px max(9px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:7px}#tabs,#actions,#extra{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}#tabs button,#actions button,#extra button{flex:none}#tabs button{min-width:70px}#extra{display:none}#extra.open{display:flex}#status{font-size:11px;color:#aab1bf;max-width:46vw;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#toast{position:absolute;bottom:50px;left:50%;transform:translateX(-50%);background:#101218e8;border-radius:10px;padding:8px 12px;font-size:12px;max-width:90vw;text-align:center;pointer-events:none;opacity:0;transition:opacity .2s}#toast.show{opacity:1}@media(max-width:400px){button{padding:9px;font-size:12px}#top button{padding:8px}#hint{font-size:10px}}
-</style></head><body><div id="app"><header><div><strong>⬡ Mini Blender</strong> <small>Mobile · v3.2.1</small></div><div id="status">Ready</div></header><main id="viewport"><div id="top"><button id="undo">↶</button><button id="redo">↷</button><button id="mirror" class="active">⇄ Mirror On</button><button id="view">◎ Frame</button><button id="more">☷</button></div><button id="gizmo" aria-label="Drag to transform selection">✥</button><div id="toast"></div><div id="hint">Tap to select · 2 fingers orbit / zoom · drag ✥ to edit</div></main><section id="bottom"><div id="tabs"><button data-mode="object">Object</button><button data-mode="vertex">Vertex</button><button data-mode="edge">Edge</button><button data-mode="face" class="active">Face</button><button id="multi">＋ Multi</button></div><div id="actions"><button data-op="move" class="active">↔ Move</button><button data-op="rotate">⟳ Rotate</button><button data-op="scale">⤢ Scale</button><button id="extrude">⇧ Extrude</button><button id="inset">▣ Inset</button><button id="bevel">◩ Edge Bevel</button></div><div id="bevelPanel" style="display:none;align-items:center;gap:6px;overflow-x:auto"><span style="font-size:12px;white-space:nowrap">Width</span><input id="liveWidth" type="range" min="1" max="45" value="20" style="flex:1;min-width:65px;accent-color:#e9a25d"><span id="widthText" style="font-size:12px">20%</span><button id="bevelAccept" class="active">✓ Apply</button><button id="bevelCancel">✕</button></div><div id="extra"><label style="display:flex;align-items:center;gap:5px;white-space:nowrap">Bevel width <input id="bevelWidth" type="range" min="5" max="45" value="20" style="width:85px"></label><label style="display:flex;align-items:center;gap:5px;white-space:nowrap">Segments (coming soon) <select id="bevelSegments" disabled><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label><button id="cube">＋ Cube</button><button id="duplicate">⧉ Duplicate</button><button id="delete">⌫ Delete</button><button id="reset">↺ New</button><button id="save">↓ Save</button><button id="load">↑ Load</button><button id="wire">▦ Wire</button></div></section></div>
+</style></head><body><div id="app"><header><div><strong>⬡ Mini Blender</strong> <small>Mobile · v3.3.0</small></div><div id="status">Ready</div></header><main id="viewport"><div id="top"><button id="undo">↶</button><button id="redo">↷</button><button id="mirror" class="active">⇄ Mirror On</button><button id="view">◎ Frame</button><button id="more">☷</button></div><button id="gizmo" aria-label="Drag to transform selection">✥</button><div id="toast"></div><div id="hint">Tap to select · 2 fingers orbit / zoom · drag ✥ to edit</div></main><section id="bottom"><div id="tabs"><button data-mode="object">Object</button><button data-mode="vertex">Vertex</button><button data-mode="edge">Edge</button><button data-mode="face" class="active">Face</button><button id="multi">＋ Multi</button></div><div id="actions"><button data-op="move" class="active">↔ Move</button><button data-op="rotate">⟳ Rotate</button><button data-op="scale">⤢ Scale</button><button id="extrude">⇧ Extrude</button><button id="inset">▣ Inset</button><button id="bevel">◩ Edge Bevel</button></div><div id="bevelPanel" style="display:none;align-items:center;gap:6px;overflow-x:auto"><span style="font-size:12px;white-space:nowrap">Width</span><input id="liveWidth" type="range" min="1" max="45" value="20" style="flex:1;min-width:65px;accent-color:#e9a25d"><span id="widthText" style="font-size:12px">20%</span><button id="bevelAccept" class="active">✓ Apply</button><button id="bevelCancel">✕</button></div><div id="extra"><label style="display:flex;align-items:center;gap:5px;white-space:nowrap">Bevel width <input id="bevelWidth" type="range" min="5" max="45" value="20" style="width:85px"></label><label style="display:flex;align-items:center;gap:5px;white-space:nowrap">Segments <select id="bevelSegments"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label><button id="cube">＋ Cube</button><button id="duplicate">⧉ Duplicate</button><button id="delete">⌫ Delete</button><button id="reset">↺ New</button><button id="save">↓ Save</button><button id="load">↑ Load</button><button id="wire">▦ Wire</button></div></section></div>
 <script type="module">
 import * as THREE from 'https://esm.sh/three@0.170.0';
 const $=s=>document.querySelector(s),viewport=$('#viewport'),scene=new THREE.Scene();scene.background=new THREE.Color(0x171a21);
@@ -85,33 +85,44 @@ function bevel(preview=false){
  // Unlike subdivision, this creates a new planar chamfer surface.
  for(let f=0;f<quads.length;f++)for(let i=0;i<attr.count;i++)if(faceNormals[f].dot(pos(i).sub(pos(quads[f][0])))>1e-3){notice('Edge bevel currently supports convex meshes');return}
  let polygons=quads.map(f=>f.map(pos)),cuts=0;
- const width=Number($('#liveWidth').value)/100;
+ const width=Number($('#liveWidth').value)/100,segments=Number($('#bevelSegments').value);
  for(const key of edges){
   const [u,v]=key.split(',').map(Number),touch=[];
   for(let f=0;f<quads.length;f++)if(quads[f].some((id,j)=>edgeKey(id,quads[f][(j+1)%4])===key))touch.push(f);
   if(touch.length!==2){notice('Bevel needs an edge shared by two faces');return}
-  const n=faceNormals[touch[0]].clone().add(faceNormals[touch[1]]).normalize();
-  if(n.lengthSq()<.5){notice('Cannot bevel this edge');return}
-  const mid=pos(u).add(pos(v)).multiplyScalar(.5),offset=width*Math.min(pos(u).distanceTo(pos(v)),1.5);
-  const plane=n.dot(mid)-offset,cap=[],next=[];
-  for(const polygon of polygons){
-   const clipped=[];
-   for(let i=0;i<polygon.length;i++){
-    const A=polygon[i],B=polygon[(i+1)%polygon.length],da=n.dot(A)-plane,db=n.dot(B)-plane;
-    if(da<=1e-7)clipped.push(A);
-    if((da< -1e-7&&db>1e-7)||(da>1e-7&&db< -1e-7)){
-     const p=A.clone().lerp(B,da/(da-db));clipped.push(p);cap.push(p)
+  const n1=faceNormals[touch[0]],n2=faceNormals[touch[1]];
+  const mid=pos(u).add(pos(v)).multiplyScalar(.5),edgeLength=pos(u).distanceTo(pos(v));
+  const angle=Math.acos(THREE.MathUtils.clamp(n1.dot(n2),-1,1));
+  if(angle<.02||angle>Math.PI-.02){notice('Cannot bevel a flat or folded edge');return false}
+  const offset=width*Math.min(edgeLength,1.5),radius=offset/Math.max(Math.tan(angle/2),.001);
+  // Sweep tangent cutting planes across the convex edge's circular profile.
+  // Each plane produces a distinct strip rather than subdividing unrelated faces.
+  for(let step=0;step<segments;step++){
+   const t=(step+.5)/segments;
+   const n=n1.clone().multiplyScalar(Math.sin((1-t)*angle)).addScaledVector(n2,Math.sin(t*angle)).normalize();
+   const bisector=n1.clone().add(n2).normalize();
+   const center=mid.clone().addScaledVector(bisector,-radius/Math.max(Math.cos(angle/2),.001));
+   const plane=n.dot(center)+radius;
+   const cap=[],next=[];
+   for(const polygon of polygons){
+    const clipped=[];
+    for(let i=0;i<polygon.length;i++){
+     const A=polygon[i],B=polygon[(i+1)%polygon.length],da=n.dot(A)-plane,db=n.dot(B)-plane;
+     if(da<=1e-7)clipped.push(A);
+     if((da< -1e-7&&db>1e-7)||(da>1e-7&&db< -1e-7)){
+      const p=A.clone().lerp(B,da/(da-db));clipped.push(p);cap.push(p)
+     }
     }
+    if(clipped.length>=3)next.push(clipped)
    }
-   if(clipped.length>=3)next.push(clipped)
+   const unique=new Map();for(const p of cap)unique.set([p.x,p.y,p.z].map(x=>Math.round(x*1e6)).join(','),p);
+   if(unique.size<3){notice('Bevel width too large or edges overlap');return false}
+   const ring=[...unique.values()],center2=new THREE.Vector3();ring.forEach(p=>center2.add(p));center2.multiplyScalar(1/ring.length);
+   const axis=new THREE.Vector3(1,0,0);if(Math.abs(n.dot(axis))>.9)axis.set(0,1,0);
+   const tangent=axis.addScaledVector(n,-axis.dot(n)).normalize(),bitangent=new THREE.Vector3().crossVectors(n,tangent);
+   ring.sort((p,q)=>Math.atan2(p.clone().sub(center2).dot(bitangent),p.clone().sub(center2).dot(tangent))-Math.atan2(q.clone().sub(center2).dot(bitangent),q.clone().sub(center2).dot(tangent)));
+   next.push(ring);polygons=next;cuts++;
   }
-  const unique=new Map();for(const p of cap)unique.set([p.x,p.y,p.z].map(x=>Math.round(x*1e6)).join(','),p);
-  if(unique.size<3){notice('Bevel width too large for this edge');return}
-  const ring=[...unique.values()],center=new THREE.Vector3();ring.forEach(p=>center.add(p));center.multiplyScalar(1/ring.length);
-  const axis=new THREE.Vector3(1,0,0);if(Math.abs(n.dot(axis))>.9)axis.set(0,1,0);
-  const tangent=axis.addScaledVector(n,-axis.dot(n)).normalize(),bitangent=new THREE.Vector3().crossVectors(n,tangent);
-  ring.sort((p,q)=>Math.atan2(p.clone().sub(center).dot(bitangent),p.clone().sub(center).dot(tangent))-Math.atan2(q.clone().sub(center).dot(bitangent),q.clone().sub(center).dot(tangent)));
-  next.push(ring);polygons=next;cuts++
  }
  // Triangulate clipped polygons, then convert each triangle into three editable quads.
  const coords=[],qout=[],points=new Map(),midpoints=new Map();
@@ -126,7 +137,7 @@ function bevel(preview=false){
   }
  }
  if([...edgeStats(qout).values()].some(n=>n!==2)){notice('Bevel canceled: topology check failed');return}
- if(!preview)checkpoint();replaceMesh(coords,qout);if(!preview)notice('Chamfered '+cuts+' edge(s) · flat bevel');return true
+ if(!preview)checkpoint();replaceMesh(coords,qout);if(!preview)notice('Bevel created '+cuts+' profile sections');return true
 }
 function download(){const blob=new Blob([JSON.stringify(serialize())],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='mini-blender.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
 for(const b of document.querySelectorAll('[data-mode]'))b.onclick=()=>{mode=b.dataset.mode;for(const x of document.querySelectorAll('[data-mode]'))x.classList.toggle('active',x===b);faces.clear();edges.clear();vertices.clear();overlayUpdate();notice(mode+' selection')};
@@ -142,7 +153,7 @@ const chosen=new Set(edges);
 if(mode==='face')for(const fi of faces){const face=active.geometry.userData.quads[fi];if(face)for(let j=0;j<4;j++)chosen.add(edgeKey(face[j],face[(j+1)%4]))}
 if(!chosen.size){notice('Select 1–4 edges or a face');return}
 bevelSession={source:JSON.stringify(serialize()),index:meshes.indexOf(active),edges:[...chosen],faces:[...faces],mode};$('#bevelPanel').style.display='flex';$('#liveWidth').value=$('#bevelWidth').value;updateBevelPreview()}
-$('#liveWidth').addEventListener('input',updateBevelPreview);
+$('#liveWidth').addEventListener('input',updateBevelPreview);$('#bevelSegments').addEventListener('change',updateBevelPreview);
 $('#bevelAccept').onclick=()=>{if(!bevelSession)return;const final=JSON.stringify(serialize()),session=bevelSession;bevelSession=null;restore(JSON.parse(session.source));checkpoint();restore(JSON.parse(final));autosave();$('#bevelPanel').style.display='none';notice('Bevel applied')};
 $('#bevelCancel').onclick=cancelBevel;
 $('#undo').onclick=()=>{if(bevelSession)cancelBevel();else undo()};$('#redo').onclick=redo;$('#extrude').onclick=extrude;$('#inset').onclick=inset;$('#bevel').onclick=startBevel;
