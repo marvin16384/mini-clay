@@ -7,7 +7,7 @@
 #panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:45px;overflow:hidden}
 button,select{font:inherit;color:#f1ede9;background:#30333d;border:1px solid #4b4e59;border-radius:11px;padding:10px 6px;touch-action:manipulation}button.active{background:#775b49;border-color:#d6ac88}button:disabled{opacity:.45}#handle{display:block;width:100%;background:transparent;border:0;color:#e4b994;padding:5px 0 11px;font-weight:700}
 .tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1;min-width:0}#layers{display:flex;gap:6px;overflow-x:auto;padding:9px 0}#layers button{white-space:nowrap;flex:none;padding:8px 10px}label{display:flex;justify-content:space-between;margin:11px 0 3px}input[type=range]{width:100%;accent-color:#d4a07a}#projects{max-height:140px;overflow:auto}
-</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.6.0</div></div><div id="status">Starting…</div></header><main id="stage"><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel"><button id="handle">⌄ Tools · Tap to collapse</button>
+</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.6.1</div></div><div id="status">Starting…</div></header><main id="stage"><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel"><button id="handle">⌄ Tools · Tap to collapse</button>
 <div class="tools"><button data-tool="add" class="active">＋ Add</button><button data-tool="carve">－ Carve</button><button data-tool="smooth">≈ Smooth</button><button data-tool="crease">⌁ Crease Fix</button><button data-tool="pull">↗ Pull</button><button data-tool="move">✥ Move</button></div>
 <div class="row"><button id="mirror">⇄ Mirror: Off</button><select id="mirrorDirection" aria-label="Post Mirror direction"><option value="positive">+X → −X</option><option value="negative">−X → +X</option></select><button id="postmirror">⇥ Symmetrize</button></div>
 <div class="row"><button id="addshape">＋ Shape</button><select id="shape"><option value="sphere">Sphere</option><option value="box">Box</option><option value="cylinder">Cylinder</option><option value="torus">Torus</option></select></div>
@@ -300,65 +300,60 @@ async function fuse(){
 function postMirror(){
  if(!selected)return;
  const old=selected.geometry,attr=old.attributes.position,idx=old.index;
- if(!idx){message('Symmetrize needs an indexed mesh');return}
- const fromNegative=$('#mirrorDirection').value==='negative',sign=fromNegative?-1:1;
- const epsilon=1e-6,points=[],triangles=[],map=new Map();
- const key=(p)=>[p.x,p.y,p.z].map(v=>Math.round(v*1e6)).join(',');
- const vertex=(p)=>{
-  const q=p.clone();if(Math.abs(q.x)<epsilon)q.x=0;
-  const k=key(q);let n=map.get(k);
-  if(n===undefined){n=points.length;points.push(q);map.set(k,n)}
-  return n
+ if(!idx){message('Symmetrize requires indexed geometry');return}
+ const direction=$('#mirrorDirection').value==='negative'?-1:1;
+ const eps=1e-6,points=[],faces=[],lookup=new Map(),intersections=new Map();
+ const key=p=>[p.x,p.y,p.z].map(v=>Math.round(v*1e6)).join(',');
+ const addPoint=p=>{
+  const q=p.clone();if(Math.abs(q.x)<eps)q.x=0;
+  const k=key(q);let id=lookup.get(k);
+  if(id===undefined){id=points.length;points.push(q);lookup.set(k,id)}
+  return id
  };
- const original=i=>new THREE.Vector3(attr.getX(i)*sign,attr.getY(i),attr.getZ(i));
- function clip(poly){
-  const result=[];
-  for(let i=0;i<poly.length;i++){
-   const a=poly[i],b=poly[(i+1)%poly.length],insideA=a.x>=-epsilon,insideB=b.x>=-epsilon;
-   if(insideA)result.push(a);
-   if(insideA!==insideB){
-    const t=a.x/(a.x-b.x),p=a.clone().lerp(b,t);p.x=0;result.push(p)
-   }
-  }
-  return result
- }
+ const coords=i=>new THREE.Vector3(attr.getX(i)*direction,attr.getY(i),attr.getZ(i));
+ const source=Array.from({length:attr.count},(_,i)=>coords(i));
+ const sourceIds=source.map(p=>addPoint(p));
+ const intersection=(i,j)=>{
+  const k=i<j?i+','+j:j+','+i;
+  if(intersections.has(k))return intersections.get(k);
+  const a=source[i],b=source[j],t=a.x/(a.x-b.x),p=a.clone().lerp(b,t);p.x=0;
+  const id=addPoint(p);intersections.set(k,id);return id
+ };
  for(let i=0;i<idx.count;i+=3){
-  const poly=clip([original(idx.getX(i)),original(idx.getX(i+1)),original(idx.getX(i+2))]);
-  if(poly.length<3)continue;
-  for(let j=1;j<poly.length-1;j++){
-   const ids=[vertex(poly[0]),vertex(poly[j]),vertex(poly[j+1])];
-   if(new Set(ids).size<3)continue;
-   const p=points[ids[0]],q=points[ids[1]],r=points[ids[2]];
-   if(q.clone().sub(p).cross(r.clone().sub(p)).lengthSq()<1e-14)continue;
-   triangles.push(ids)
+  const tri=[idx.getX(i),idx.getX(i+1),idx.getX(i+2)],polygon=[];
+  for(let j=0;j<3;j++){
+   const a=tri[j],b=tri[(j+1)%3],x=source[a].x,y=source[b].x;
+   if(x>=-eps)polygon.push(sourceIds[a]);
+   if((x>eps&&y< -eps)||(x< -eps&&y>eps))polygon.push(intersection(a,b));
+  }
+  const compact=polygon.filter((v,i)=>v!==polygon[(i+polygon.length-1)%polygon.length]);
+  if(compact.length<3)continue;
+  for(let j=1;j<compact.length-1;j++){
+   const f=[compact[0],compact[j],compact[j+1]];
+   if(new Set(f).size!==3)continue;
+   const a=points[f[0]],b=points[f[1]],c=points[f[2]];
+   if(b.clone().sub(a).cross(c.clone().sub(a)).lengthSq()<1e-14)continue;
+   if(f.every(v=>points[v].x===0))continue;
+   faces.push(f)
   }
  }
- if(!triangles.length){message('Symmetrize: no geometry on selected side');return}
- const base=triangles.slice();
- // Duplicate the chosen half and reflect it across x=0.
- // Reuse plane vertices; reverse mirrored triangle winding to retain outward normals.
- const mirrorIds=new Map();
- for(let i=0;i<points.length;i++){
-  const p=points[i];
-  mirrorIds.set(i,p.x===0?i:vertex(new THREE.Vector3(-p.x,p.y,p.z)))
+ if(!faces.length){message('Symmetrize: selected half is empty');return}
+ const halfCount=points.length,mirrorIds=new Array(halfCount);
+ for(let i=0;i<halfCount;i++){
+  const p=points[i];mirrorIds[i]=p.x===0?i:addPoint(new THREE.Vector3(-p.x,p.y,p.z))
  }
- for(const f of base){
-  if(f.every(i=>points[i].x===0))continue;
-  triangles.push([mirrorIds.get(f[0]),mirrorIds.get(f[2]),mirrorIds.get(f[1])])
- }
- const out=new THREE.BufferGeometry(),coords=[];
- for(const p of points)coords.push(p.x*sign,p.y,p.z);
- out.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));
- out.setIndex(triangles.flat());
- const t=topology(out);
- if(!t?.closed){
-  const invalid=t?[...t.edges.values()].filter(e=>e.faces.length!==2).length:0;
-  out.dispose();message('Symmetrize canceled: '+invalid+' open/non-manifold edges');return
- }
- if(out.index.count/3>MAX_FACES){out.dispose();message('Symmetrize exceeds polygon limit');return}
- out.computeVertexNormals();out.computeBoundingSphere();
- checkpoint();selected.geometry=out;old.dispose();render();scheduleSave();
- message('Symmetrized '+(fromNegative?'−X → +X':'+X → −X')+' · seamless center')
+ const halfFaces=faces.slice();
+ for(const f of halfFaces)faces.push([mirrorIds[f[0]],mirrorIds[f[2]],mirrorIds[f[1]]]);
+ const output=new THREE.BufferGeometry(),flat=[];
+ for(const p of points)flat.push(p.x*direction,p.y,p.z);
+ output.setAttribute('position',new THREE.Float32BufferAttribute(flat,3));output.setIndex(faces.flat());
+ const validated=topology(output);
+ const invalid=validated?[...validated.edges.values()].filter(e=>e.faces.length!==2).length:0;
+ if(invalid||!validated?.closed){output.dispose();message('Symmetrize canceled: '+invalid+' unmatched edges. Try Smart Remesh first');return}
+ if(faces.length>MAX_FACES){output.dispose();message('Symmetrize exceeds polygon limit');return}
+ output.computeVertexNormals();output.computeBoundingSphere();
+ checkpoint();selected.geometry=output;old.dispose();render();scheduleSave();
+ message('Symmetrized '+(direction<0?'−X → +X':'+X → −X')+' · watertight')
 }
 function center(){target.set(0,0,0);camera.position.set(2,1.3,4.2);camera.lookAt(target);drawGizmo();render()}
 const touches=new Map();let previous=null,gesture=null,started=false;
@@ -383,5 +378,5 @@ $('#undo').onclick=()=>{if(!undoStack.length){message('Nothing to undo');return}
 $('#center').onclick=center;$('#new').onclick=()=>{if(!confirm('Start a new sculpture?'))return;checkpoint();for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=[];add('sphere');center()};
 $('#save').onclick=saveProject;$('#projectsbtn').onclick=listProjects;$('#backup').onclick=()=>{const raw=localStorage.getItem(BACKUP);if(!raw){message('No fuse backup available');return}if(confirm('Restore the layers from before your last fusion?')){checkpoint();restoreData(JSON.parse(raw));scheduleSave();message('Fusion backup restored')}};
 try{const raw=localStorage.getItem(KEY)||localStorage.getItem('mini-clay-current');if(raw){const data=JSON.parse(raw);if(data.layers?.length){if(data.layers[0].translation&&!data.layers[0].position){for(const item of data.layers){item.position=item.translation;item.quaternion=new THREE.Quaternion().setFromEuler(new THREE.Euler(...(item.rotation||[0,0,0]))).toArray()}}restoreData(data)}else add()}else add()}catch(e){console.error(e);add();message('New sculpture ready')}
-center();resize();message('Ready · v2.6.0');
+center();resize();message('Ready · v2.6.1');
 </script></body></html>
