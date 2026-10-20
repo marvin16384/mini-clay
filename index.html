@@ -4,10 +4,10 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body,#app,#stage,#panel,button,select,label,output{user-select:none!important;-webkit-user-select:none!important;-webkit-touch-callout:none}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101116;color:#f1ede9;font:14px system-ui;overscroll-behavior:none;user-select:none}
 #app{height:100dvh;display:flex;flex-direction:column}header{height:58px;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}h1{font-size:17px;margin:0}#version{font-size:10px;color:#aaa6a4}#status{font-size:11px;color:#aaa6a4;text-align:right;max-width:52%;font-weight:400}
 #stage{position:relative;flex:1;min-height:120px;overflow:hidden;touch-action:none}canvas{display:block;width:100%;height:100%;touch-action:none}#hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;pointer-events:none;font-size:11px;color:#b9b4b1}
-#panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:54px;overflow:hidden}#panel.closed>*:not(#handle){display:none!important}#panel [hidden]{display:none!important}#quickbar{position:absolute;top:12px;left:10px;right:10px;display:flex;gap:7px;z-index:3;pointer-events:none}#quickbar button{pointer-events:auto;min-height:43px;padding:8px 12px;background:#272a33e8;backdrop-filter:blur(12px);box-shadow:0 3px 12px #0005}#quickbar button.active{background:#775b49}#quickbar .spacer{flex:1}#quickExtrude,#transformBar{display:none}body.model-mode #quickExtrude{display:block}body.model-mode #transformBar{display:flex}#transformBar{gap:4px}#transformBar button{font-size:12px;padding:8px 7px!important}#transformBar button.active{background:#775b49}.tools{grid-template-columns:repeat(4,minmax(0,1fr))!important}.tools button{padding:9px 3px;font-size:12px}#panel:not(.closed){max-height:min(55dvh,510px)}#handle{position:sticky;top:0;z-index:2;background:#1b1d24!important}
+#panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:54px;overflow:hidden}#panel.closed>*:not(#handle){display:none!important}#panel [hidden]{display:none!important}#quickbar{position:absolute;top:12px;left:10px;right:10px;display:flex;gap:7px;z-index:3;pointer-events:none}#quickbar button{pointer-events:auto;min-height:43px;padding:8px 12px;background:#272a33e8;backdrop-filter:blur(12px);box-shadow:0 3px 12px #0005}#quickbar button.active{background:#775b49}#quickbar .spacer{flex:1}#quickExtrude,#transformBar{display:none}body.model-mode #quickExtrude{display:block}body.model-mode #transformBar{display:flex}#transformBar{gap:4px}#transformBar button{font-size:12px;padding:8px 7px!important}#transformBar button.active{background:#775b49}#editHandle{display:none;position:absolute;z-index:4;width:54px;height:54px;border-radius:50%;border:2px solid #f4c38f;background:#3b3029e8;color:#fff;font-size:23px;touch-action:none;box-shadow:0 3px 14px #0009;transform:translate(-50%,-50%)}#editHandle.visible{display:block}#editHandle:active{background:#906747}.tools{grid-template-columns:repeat(4,minmax(0,1fr))!important}.tools button{padding:9px 3px;font-size:12px}#panel:not(.closed){max-height:min(55dvh,510px)}#handle{position:sticky;top:0;z-index:2;background:#1b1d24!important}
 button,select{font:inherit;color:#f1ede9;background:#30333d;border:1px solid #4b4e59;border-radius:11px;padding:10px 6px;touch-action:manipulation}button.active{background:#775b49;border-color:#d6ac88}button:disabled{opacity:.45}#handle{display:block;width:100%;background:transparent;border:0;color:#e4b994;padding:5px 0 11px;font-weight:700}
 .tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1;min-width:0}#layers{display:flex;gap:6px;overflow-x:auto;padding:9px 0}#layers button{white-space:nowrap;flex:none;padding:8px 10px}label{display:flex;justify-content:space-between;margin:11px 0 3px}input[type=range]{width:100%;accent-color:#d4a07a}#projects{max-height:140px;overflow:auto}
-</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.10.2</div></div><div id="status">Starting…</div></header><main id="stage"><div id="quickbar"><button id="quickMode">⬡ Model</button><button id="quickMirror">⇄ On</button><button id="quickExtrude">⇧ Extrude</button><div id="transformBar"><button data-transform="translate" class="active">↔ Move</button><button data-transform="rotate">⟳ Rotate</button><button data-transform="scale">⤢ Scale</button></div><span class="spacer"></span><button id="quickUndo">↶</button><button id="quickTools">☷ Tools</button></div><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel" class="closed"><button id="handle">⌃ Tools · Tap to expand</button>
+</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.10.3</div></div><div id="status">Starting…</div></header><main id="stage"><div id="quickbar"><button id="quickMode">⬡ Model</button><button id="quickMirror">⇄ On</button><button id="quickExtrude">⇧ Extrude</button><div id="transformBar"><button data-transform="translate" class="active">↔ Move</button><button data-transform="rotate">⟳ Rotate</button><button data-transform="scale">⤢ Scale</button></div><span class="spacer"></span><button id="quickUndo">↶</button><button id="quickTools">☷ Tools</button></div><button id="editHandle" aria-label="Drag selected geometry">✥</button><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel" class="closed"><button id="handle">⌃ Tools · Tap to expand</button>
 <div class="tools"><button data-tool="add" class="active">＋ Add</button><button data-tool="carve">－ Carve</button><button data-tool="smooth">≈ Smooth</button><button data-tool="crease">⌁ Crease Fix</button><button data-tool="pull">↗ Pull</button><button data-tool="move">✥ Move</button><button data-tool="model">⬡ Model</button></div>
 <div class="row"><button id="mirror">⇄ Mirror: Off</button><select id="mirrorDirection" aria-label="Post Mirror direction"><option value="positive">+X → −X</option><option value="negative">−X → +X</option></select><button id="postmirror">⇥ Symmetrize</button></div>
 <div class="row"><button id="addshape">＋ Shape</button><select id="shape"><option value="sphere">Sphere</option><option value="box">Box</option><option value="cylinder">Cylinder</option><option value="torus">Torus</option></select></div>
@@ -33,7 +33,7 @@ let layers=[],selected=null,tool='add',mirror=localStorage.getItem('mini-clay-mi
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),v=new THREE.Vector3(),w=new THREE.Vector3();
 const MAX_FACES=60000,KEY='mini-clay-v2-current',BACKUP='mini-clay-v2-before-fuse';
 function message(s){status.textContent=s}
-function render(){renderer.render(scene,camera)}
+function render(){renderer.render(scene,camera);if(typeof positionEditHandle==='function')positionEditHandle()}
 function resize(){const r=stage.getBoundingClientRect();camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);render()}
 new ResizeObserver(resize).observe(stage);
 function quadMesh(coords,quads){
@@ -473,7 +473,20 @@ function center(){target.set(0,0,0);camera.position.set(2,1.3,4.2);camera.lookAt
 let editSelection=[],editStart=null,editTransform='translate';
 const editOverlay=new THREE.Group();scene.add(editOverlay);
 function clearEditOverlay(){while(editOverlay.children.length){const c=editOverlay.children.pop();c.parent=null;c.geometry?.dispose();c.material?.dispose()}}
+function positionEditHandle(){
+ const handle=$('#editHandle');if(!handle)return;
+ if(tool!=='model'||!selected||!editSelection.length){handle.classList.remove('visible');return}
+ const a=selected.geometry.attributes.position,center=new THREE.Vector3();
+ for(const i of editSelection)center.add(new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)));
+ center.multiplyScalar(1/editSelection.length);selected.localToWorld(center);center.project(camera);
+ const rect=canvas.getBoundingClientRect();const x=(center.x+1)*rect.width/2,y=(1-center.y)*rect.height/2;
+ if(center.z>1||x<0||x>rect.width||y<0||y>rect.height){handle.classList.remove('visible');return}
+ handle.style.left=THREE.MathUtils.clamp(x+72,34,rect.width-34)+'px';
+ handle.style.top=THREE.MathUtils.clamp(y-68,82,rect.height-34)+'px';
+ handle.classList.add('visible')
+}
 function updateEditOverlay(){
+ positionEditHandle();
  if($('#quickExtrude'))$('#quickExtrude').disabled=!editSelection.length||$('#editMode').value!=='face';
  clearEditOverlay();if(tool!=='model'||!selected||!editSelection.length){render();return}
  const a=selected.geometry.attributes.position;
@@ -486,7 +499,7 @@ function modelPick(x,y){
  if(!selected)return;
  const r=canvas.getBoundingClientRect();pointer.set((x-r.left)/r.width*2-1,-(y-r.top)/r.height*2+1);
  ray.setFromCamera(pointer,camera);const hit=ray.intersectObject(selected)[0];
- if(!hit){editSelection=[];updateEditOverlay();return}
+ if(!hit){message('Selection kept · use the floating handle to transform');return}
  const index=selected.geometry.index,face=hit.faceIndex;
  if(face===undefined||!index)return;
  const tri=[index.getX(face*3),index.getX(face*3+1),index.getX(face*3+2)],quads=selected.geometry.userData.quads;const ids=quads?quads[Math.floor(face/2)]:tri,a=selected.geometry.attributes.position;
@@ -530,9 +543,9 @@ function modelDrag(dx,dy){
    a.setXYZ(i,v.x,v.y,v.z)
   }
  }else{
-  const axis=new THREE.Vector3(0,0,1).applyQuaternion(camera.quaternion);
-  axis.applyQuaternion(selected.getWorldQuaternion(new THREE.Quaternion()).invert()).normalize();
-  const q=new THREE.Quaternion().setFromAxisAngle(axis,(dx-dy)*.012);
+  const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion),up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
+  const local=selected.getWorldQuaternion(new THREE.Quaternion()).invert();right.applyQuaternion(local);up.applyQuaternion(local);
+  const q=new THREE.Quaternion().setFromAxisAngle(up,dx*.012).multiply(new THREE.Quaternion().setFromAxisAngle(right,dy*.012));
   for(const i of editSelection){
    const v=new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)).sub(center).applyQuaternion(q).add(center);
    a.setXYZ(i,v.x,v.y,v.z)
@@ -570,6 +583,10 @@ function modelExtrude(){
  message(opposite>=0?'Mirrored quad faces extruded':'Quad face extruded')
 }
 const touches=new Map();let previous=null,gesture=null,started=false;
+let handleDrag=null;
+$('#editHandle').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(!editSelection.length)return;$('#editHandle').setPointerCapture(e.pointerId);handleDrag={id:e.pointerId,x:e.clientX,y:e.clientY,started:false}});
+$('#editHandle').addEventListener('pointermove',e=>{if(!handleDrag||e.pointerId!==handleDrag.id)return;e.preventDefault();e.stopPropagation();if(!handleDrag.started){checkpoint();handleDrag.started=true}modelDrag(e.clientX-handleDrag.x,e.clientY-handleDrag.y);handleDrag.x=e.clientX;handleDrag.y=e.clientY});
+for(const name of ['pointerup','pointercancel'])$('#editHandle').addEventListener(name,e=>{if(handleDrag?.id===e.pointerId)handleDrag=null});
 const canvas=renderer.domElement;
 function pointEvent(e){return {x:e.clientX,y:e.clientY}}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);touches.set(e.pointerId,pointEvent(e));previous=null;gesture=null;started=false;if(touches.size>1)pullAnchor=null;if(touches.size===1&&tool==='model'){modelPick(e.clientX,e.clientY);editStart={x:e.clientX,y:e.clientY};}else if(touches.size===1&&tool!=='move'){checkpoint();if(tool==='pull')pullStart(e.clientX,e.clientY);else sculpt(e.clientX,e.clientY)}});
@@ -596,5 +613,5 @@ $('#undo').onclick=()=>{if(!undoStack.length){message('Nothing to undo');return}
 $('#center').onclick=center;$('#new').onclick=()=>{if(!confirm('Start a new sculpture?'))return;checkpoint();for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=[];add('box');center()};
 $('#save').onclick=saveProject;$('#projectsbtn').onclick=listProjects;$('#backup').onclick=()=>{const raw=localStorage.getItem(BACKUP);if(!raw){message('No fuse backup available');return}if(confirm('Restore the layers from before your last fusion?')){checkpoint();restoreData(JSON.parse(raw));scheduleSave();message('Fusion backup restored')}};
 try{const raw=localStorage.getItem(KEY)||localStorage.getItem('mini-clay-current');if(raw){const data=JSON.parse(raw);if(data.layers?.length){if(data.layers[0].translation&&!data.layers[0].position){for(const item of data.layers){item.position=item.translation;item.quaternion=new THREE.Quaternion().setFromEuler(new THREE.Euler(...(item.rotation||[0,0,0]))).toArray()}}restoreData(data)}else add('box')}else add('box')}catch(e){console.error(e);add('box');message('New sculpture ready')}
-center();resize();message('Ready · v2.10.2');
+center();resize();message('Ready · v2.10.3');
 </script></body></html>
