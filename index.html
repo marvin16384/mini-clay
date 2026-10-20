@@ -7,7 +7,7 @@
 #panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:45px;overflow:hidden}
 button,select{font:inherit;color:#f1ede9;background:#30333d;border:1px solid #4b4e59;border-radius:11px;padding:10px 6px;touch-action:manipulation}button.active{background:#775b49;border-color:#d6ac88}button:disabled{opacity:.45}#handle{display:block;width:100%;background:transparent;border:0;color:#e4b994;padding:5px 0 11px;font-weight:700}
 .tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1;min-width:0}#layers{display:flex;gap:6px;overflow-x:auto;padding:9px 0}#layers button{white-space:nowrap;flex:none;padding:8px 10px}label{display:flex;justify-content:space-between;margin:11px 0 3px}input[type=range]{width:100%;accent-color:#d4a07a}#projects{max-height:140px;overflow:auto}
-</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.6.3</div></div><div id="status">Starting…</div></header><main id="stage"><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel"><button id="handle">⌄ Tools · Tap to collapse</button>
+</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.6.4</div></div><div id="status">Starting…</div></header><main id="stage"><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel"><button id="handle">⌄ Tools · Tap to collapse</button>
 <div class="tools"><button data-tool="add" class="active">＋ Add</button><button data-tool="carve">－ Carve</button><button data-tool="smooth">≈ Smooth</button><button data-tool="crease">⌁ Crease Fix</button><button data-tool="pull">↗ Pull</button><button data-tool="move">✥ Move</button></div>
 <div class="row"><button id="mirror">⇄ Mirror: Off</button><select id="mirrorDirection" aria-label="Post Mirror direction"><option value="positive">+X → −X</option><option value="negative">−X → +X</option></select><button id="postmirror">⇥ Symmetrize</button></div>
 <div class="row"><button id="addshape">＋ Shape</button><select id="shape"><option value="sphere">Sphere</option><option value="box">Box</option><option value="cylinder">Cylinder</option><option value="torus">Torus</option></select></div>
@@ -145,13 +145,34 @@ function mirrorSeam(g){
 }
 function pullStart(x,y){
  const center=hit(x,y);if(!center||!selected){pullAnchor=null;return}
- const p=selected.geometry.attributes.position,weights=new Float32Array(p.count),reflected=new Float32Array(p.count);
- const radius=.10+brush*.62,other=center.clone();other.x=-other.x;
+ const geometry=selected.geometry,p=geometry.attributes.position,normals=geometry.attributes.normal;
+ const weights=new Float32Array(p.count),reflected=new Float32Array(p.count);
+ const radius=.12+brush*.72,other=center.clone();other.x=-other.x;
+ // A rounded, ball-shaped grab: a broad dome at the center with a feathered rim.
+ const sphericalFalloff=d=>{
+  if(d>=radius)return 0;
+  const t=d/radius;
+  return Math.pow(Math.max(0,1-t*t),1.65)
+ };
+ // Prefer the visible surface instead of pulling the opposite side through the sculpture.
+ let nearest=0,best=Infinity;
+ for(let i=0;i<p.count;i++){
+  const dx=p.getX(i)-center.x,dy=p.getY(i)-center.y,dz=p.getZ(i)-center.z;
+  const d=dx*dx+dy*dy+dz*dz;if(d<best){best=d;nearest=i}
+ }
+ const facing=new THREE.Vector3(normals.getX(nearest),normals.getY(nearest),normals.getZ(nearest)).normalize();
  for(let i=0;i<p.count;i++){
   const v=new THREE.Vector3(p.getX(i),p.getY(i),p.getZ(i));
+  const n=new THREE.Vector3(normals.getX(i),normals.getY(i),normals.getZ(i)).normalize();
   const d=v.distanceTo(center),m=v.distanceTo(other);
-  if(d<radius)weights[i]=Math.pow(1-d/radius,1.4);
-  if(mirror&&m<radius)reflected[i]=Math.pow(1-m/radius,1.4)
+  // Gradually reduce influence on surfaces facing away from the grabbed patch.
+  const front=THREE.MathUtils.smoothstep(n.dot(facing),-.25,.35);
+  weights[i]=sphericalFalloff(d)*front;
+  if(mirror){
+   const reflectedNormal=new THREE.Vector3(-facing.x,facing.y,facing.z);
+   const mirroredFront=THREE.MathUtils.smoothstep(n.dot(reflectedNormal),-.25,.35);
+   reflected[i]=sphericalFalloff(m)*mirroredFront
+  }
  }
  pullAnchor={mesh:selected,weights,reflected}
 }
@@ -436,5 +457,5 @@ $('#undo').onclick=()=>{if(!undoStack.length){message('Nothing to undo');return}
 $('#center').onclick=center;$('#new').onclick=()=>{if(!confirm('Start a new sculpture?'))return;checkpoint();for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=[];add('sphere');center()};
 $('#save').onclick=saveProject;$('#projectsbtn').onclick=listProjects;$('#backup').onclick=()=>{const raw=localStorage.getItem(BACKUP);if(!raw){message('No fuse backup available');return}if(confirm('Restore the layers from before your last fusion?')){checkpoint();restoreData(JSON.parse(raw));scheduleSave();message('Fusion backup restored')}};
 try{const raw=localStorage.getItem(KEY)||localStorage.getItem('mini-clay-current');if(raw){const data=JSON.parse(raw);if(data.layers?.length){if(data.layers[0].translation&&!data.layers[0].position){for(const item of data.layers){item.position=item.translation;item.quaternion=new THREE.Quaternion().setFromEuler(new THREE.Euler(...(item.rotation||[0,0,0]))).toArray()}}restoreData(data)}else add()}else add()}catch(e){console.error(e);add();message('New sculpture ready')}
-center();resize();message('Ready · v2.6.3');
+center();resize();message('Ready · v2.6.4');
 </script></body></html>
