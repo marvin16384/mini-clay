@@ -1,277 +1,92 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#101116"><title>Mini Clay</title><style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101116;color:#eee;font:14px system-ui;overscroll-behavior:none;user-select:none;-webkit-user-select:none}#app{height:100dvh;display:flex;flex-direction:column}header{height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;font-weight:700}#stage{flex:1;min-height:150px;position:relative;touch-action:none;overflow:hidden}canvas{display:block;touch-action:none;width:100%;height:100%}#hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;color:#b7b1ad;pointer-events:none;font-size:12px}#panel{padding:9px 12px calc(9px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:18px 18px 0 0;max-height:min(43dvh,340px);overflow-y:auto;overscroll-behavior:contain;flex-shrink:0}#panel.collapsed{max-height:52px;overflow:hidden}#panelHandle{width:100%;border:0;background:transparent;padding:3px 0 9px;color:#d9b99f;font-weight:700}#panel button{padding:9px 5px;border-radius:10px}#panel label{margin:7px 0 3px}#panel footer{margin-top:7px}#panel .tools{gap:5px}.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}button{background:#30333d;border:1px solid #494b55;color:#eee;border-radius:12px;padding:13px 5px;font:inherit;touch-action:manipulation}button.active{background:#84654f;border-color:#e3b995}label{display:flex;justify-content:space-between;margin:13px 0 5px}input{width:100%;accent-color:#d2a17b}footer{display:flex;gap:8px;margin-top:12px}footer button{flex:1}#status{font-size:11px;color:#9b9fa9;font-weight:400}
-</style></head><body><div id="app"><header><div style="display:flex;flex-direction:column;gap:2px;line-height:1.1"><span>◉ Mini Clay</span><span id="appVersion" style="font-size:10px;font-weight:500;color:#a7a9b1">Version 1.3.0</span></div><span id="status">Loading 3D…</span></header><div id="stage"><div id="hint">One: sculpt · Two: orbit world + zoom · Three: pan</div></div><div id="panel"><button id="panelHandle" aria-expanded="true">⌄ Tools · Tap to collapse</button><div class="tools"><button data-tool="add" class="active">＋ Add</button><button data-tool="carve">－ Carve</button><button data-tool="smooth">≈ Smooth</button><button data-tool="translate">✥ Move</button></div><div style="display:flex;gap:8px;margin-top:9px"><button id="mirror" style="flex:1">⇄ Mirror: Off</button><button id="postmirror" style="flex:1">⇥ Post Mirror</button></div><div style="display:flex;gap:8px;margin-top:9px"><button id="addshape" style="flex:1">＋ Shape</button><select id="shapeType" style="flex:1;background:#30333d;color:#eee;border:1px solid #494b55;border-radius:12px;padding:8px"><option value="sphere">Sphere</option><option value="box">Box</option><option value="cylinder">Cylinder</option><option value="torus">Torus</option></select></div><button id="merge" style="width:100%;margin-top:7px">▣ Fuse Layers</button><div id="layers" style="display:flex;gap:6px;overflow-x:auto;padding:8px 0"></div><button id="dyntopo" style="width:100%">◇ Dynamic Remesh</button><label>Brush size <output id="sizeval">35</output></label><input id="size" type="range" min="5" max="100" value="35"><label>Strength <output id="strengthval">35</output></label><input id="strength" type="range" min="5" max="100" value="35"><footer><button id="save">Save</button><button id="load">Projects</button></footer><div id="projects" hidden style="max-height:170px;overflow:auto;margin-top:8px"></div><footer><button id="undo">↶ Undo</button><button id="center">⊙ Center</button><button id="reset">● New Sphere</button></footer></div></div>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#101116"><title>Mini Clay</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101116;color:#f1ede9;font:14px system-ui;overscroll-behavior:none;user-select:none}
+#app{height:100dvh;display:flex;flex-direction:column}header{height:58px;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}h1{font-size:17px;margin:0}#version{font-size:10px;color:#aaa6a4}#status{font-size:11px;color:#aaa6a4;text-align:right;max-width:52%;font-weight:400}
+#stage{position:relative;flex:1;min-height:120px;overflow:hidden;touch-action:none}canvas{display:block;width:100%;height:100%;touch-action:none}#hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;pointer-events:none;font-size:11px;color:#b9b4b1}
+#panel{flex:none;max-height:min(48dvh,440px);overflow-y:auto;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:#1b1d24;border-radius:19px 19px 0 0;overscroll-behavior:contain}#panel.closed{max-height:45px;overflow:hidden}
+button,select{font:inherit;color:#f1ede9;background:#30333d;border:1px solid #4b4e59;border-radius:11px;padding:10px 6px;touch-action:manipulation}button.active{background:#775b49;border-color:#d6ac88}button:disabled{opacity:.45}#handle{display:block;width:100%;background:transparent;border:0;color:#e4b994;padding:5px 0 11px;font-weight:700}
+.tools{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.row{display:flex;gap:7px;margin-top:8px}.row>*{flex:1;min-width:0}#layers{display:flex;gap:6px;overflow-x:auto;padding:9px 0}#layers button{white-space:nowrap;flex:none;padding:8px 10px}label{display:flex;justify-content:space-between;margin:11px 0 3px}input[type=range]{width:100%;accent-color:#d4a07a}#projects{max-height:140px;overflow:auto}
+</style></head><body><div id="app"><header><div><h1>◉ Mini Clay</h1><div id="version">Version 2.0.0</div></div><div id="status">Starting…</div></header><main id="stage"><div id="hint">1 finger: sculpt / move · 2: orbit or transform · 3: pan</div></main><section id="panel"><button id="handle">⌄ Tools · Tap to collapse</button>
+<div class="tools"><button data-tool="add" class="active">＋ Add</button><button data-tool="carve">－ Carve</button><button data-tool="smooth">≈ Smooth</button><button data-tool="move">✥ Move</button></div>
+<div class="row"><button id="mirror">⇄ Mirror: Off</button><button id="postmirror">⇥ Post Mirror</button></div>
+<div class="row"><button id="addshape">＋ Shape</button><select id="shape"><option value="sphere">Sphere</option><option value="box">Box</option><option value="cylinder">Cylinder</option><option value="torus">Torus</option></select></div>
+<div id="layers"></div><div class="row"><button id="merge">▣ Fuse Layers</button><button id="remesh">◇ Smart Remesh</button></div>
+<label>Brush size <output id="sizeout">35</output></label><input id="size" type="range" min="5" max="100" value="35">
+<label>Strength <output id="strengthout">35</output></label><input id="strength" type="range" min="5" max="100" value="35">
+<div class="row"><button id="undo">↶ Undo</button><button id="center">⊙ Center</button><button id="new">● New</button></div>
+<div class="row"><button id="save">Save Project</button><button id="projectsbtn">Projects</button><button id="backup">Restore Fuse Backup</button></div><div id="projects" hidden></div>
+</section></div>
 <script type="module">
 import * as THREE from 'https://esm.sh/three@0.170.0';
-const stage=document.querySelector('#stage'),status=document.querySelector('#status');
-const scene=new THREE.Scene();scene.background=new THREE.Color('#101116');
-const camera=new THREE.PerspectiveCamera(42,1,.1,100);camera.position.set(0,0,4.3);
-const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));stage.prepend(renderer.domElement);renderer.domElement.style.position='absolute';renderer.domElement.style.inset='0';
-scene.add(new THREE.HemisphereLight(0xffffff,0x564135,2.2));const worldAxes=new THREE.AxesHelper(2.2);scene.add(worldAxes);const worldGrid=new THREE.GridHelper(8,16,0x4c596c,0x30343e);worldGrid.position.y=-1.65;scene.add(worldGrid);
-const light=new THREE.DirectionalLight(0xffe6cc,2.5);light.position.set(-3,5,6);scene.add(light);
-let axes,gizmo,rotateAxes,scaleAxes,gizmoMode='move',dragAxis=null,mesh,base,layers=[],history=[],tool='add',brush=.35,strength=.35,dyntopo=true,mirrorEnabled=false,lastRefine=0,saveTimer=null;const target=new THREE.Vector3();const axisColors={x:0xff6868,y:0x69db8c,z:0x6baeff};function makeGizmo(){gizmo=new THREE.Group();axes=new THREE.Group();for(const axis of ['x','y','z']){const dir=new THREE.Vector3(axis==='x'?1:0,axis==='y'?1:0,axis==='z'?1:0);const arrow=new THREE.ArrowHelper(dir,new THREE.Vector3(),1.65,axisColors[axis],.24,.13);axes.add(arrow);const hit=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,1.45,8),new THREE.MeshBasicMaterial({visible:false}));hit.position.copy(dir).multiplyScalar(.85);hit.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);hit.userData.axis=axis;axes.add(hit)}gizmo.add(axes);
-rotateAxes=new THREE.Group();scaleAxes=new THREE.Group();
-for(const axis of ['x','y','z']){
- const color=axisColors[axis],ring=new THREE.Mesh(new THREE.TorusGeometry(1.4,.018,8,72),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9,depthTest:false}));
- if(axis==='x')ring.rotation.y=Math.PI/2;
- if(axis==='y')ring.rotation.x=Math.PI/2;
- rotateAxes.add(ring);
- const dir=new THREE.Vector3(axis==='x'?1:0,axis==='y'?1:0,axis==='z'?1:0);
- const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),dir.clone().multiplyScalar(1.55)]),new THREE.LineBasicMaterial({color,depthTest:false}));
- const handle=new THREE.Mesh(new THREE.BoxGeometry(.23,.23,.23),new THREE.MeshBasicMaterial({color,depthTest:false}));
- handle.position.copy(dir).multiplyScalar(1.55);scaleAxes.add(line,handle);
-}
-gizmo.add(rotateAxes,scaleAxes);scene.add(gizmo);gizmo.visible=false}makeGizmo();function setGizmoMode(mode){gizmoMode=mode;syncGizmo()}
-function syncGizmo(){if(gizmo&&mesh){mesh.updateMatrixWorld(true);mesh.getWorldPosition(gizmo.position);gizmo.visible=tool==='translate';axes.visible=gizmoMode==='move';rotateAxes.visible=gizmoMode==='rotate';scaleAxes.visible=gizmoMode==='scale'}}function fitDistance(){const half=THREE.MathUtils.degToRad(camera.fov/2);const horizontal=Math.atan(Math.tan(half)*camera.aspect);return 1.35/Math.sin(Math.min(half,horizontal))}function center(){target.set(0,0,0);camera.up.set(0,1,0);camera.position.set(0,0,fitDistance());camera.lookAt(target);resize();render()}
-function shapeGeometry(type){if(type==='box')return new THREE.BoxGeometry(1.5,1.5,1.5,12,12,12);if(type==='cylinder')return new THREE.CylinderGeometry(.85,.85,1.65,40,12);if(type==='torus')return new THREE.TorusGeometry(.85,.32,20,48);return new THREE.SphereGeometry(1.15,40,28)}
-function addShape(type='sphere',clear=false){
- if(clear){for(const item of layers){scene.remove(item);item.geometry.dispose()}layers=[]}
- const geometry=shapeGeometry(type),item=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:0xc29a7b,roughness:.95,metalness:0,flatShading:false}));
- item.userData.shapeType=type;item.userData.label=type[0].toUpperCase()+type.slice(1)+' '+(layers.length+1);
- if(layers.length&&!clear)item.position.x=.35*(layers.length%3);
- scene.add(item);layers.push(item);selectLayer(layers.length-1);return item
-}
-function selectLayer(i){if(!layers[i])return;mesh=layers[i];for(const item of layers)item.material.color.setHex(item===mesh?0xc29a7b:0x947c70);syncGizmo();updateLayers();updateCount();render()}
-async function mergeLayers(){
- if(layers.length<2){status.textContent='Add another layer first';return}
- const button=document.getElementById('merge');button.disabled=true;button.textContent='Fusing shapes…';status.textContent='Building seamless union…';
- try{
-  // Preserve a recoverable snapshot before destructive topology operations.
-  try{localStorage.setItem('mini-clay-before-fuse',JSON.stringify({layers:layers.map(layerData),selected:layers.indexOf(mesh),saved:Date.now()}))}catch(e){}
-  const {Evaluator,Brush,ADDITION}=await import('https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.170.0');
-  const evaluator=new Evaluator();evaluator.useGroups=false;evaluator.attributes=['position','normal'];
-  let combined=null;
-  for(const item of layers){
-   item.updateMatrixWorld(true);
-   // CSG needs one consistent triangle stream. BoxGeometry has six separate material groups.
-   const source=item.geometry.index?item.geometry.toNonIndexed():item.geometry.clone();
-   const geometry=new THREE.BufferGeometry();
-   geometry.setAttribute('position',source.attributes.position.clone());
-   geometry.applyMatrix4(item.matrixWorld);
-   geometry.computeVertexNormals();
-   source.dispose();
-   // A tiny offset avoids exactly coplanar box faces destabilizing the boolean solver.
-   if(combined&&item.userData.shapeType==='box'){
-    const p=geometry.attributes.position;
-    for(let j=0;j<p.count;j++)p.setXYZ(j,p.getX(j)+.00003,p.getY(j)+.00002,p.getZ(j)+.00001);
-    p.needsUpdate=true;geometry.computeVertexNormals();
-   }
-   const brush=new Brush(geometry,new THREE.MeshStandardMaterial());
-   brush.updateMatrixWorld();
-   if(!combined){combined=brush;continue}
-   const result=evaluator.evaluate(combined,brush,ADDITION);
-   if(combined!==brush)combined.geometry.dispose();
-   brush.geometry.dispose();
-   combined=result;
-  }
-  const raw=combined.geometry;
-  const attr=raw.attributes.position,index=raw.index,vertices=[],indices=[],lookup=new Map();
-  const source=index?index.array:null,count=source?source.length:attr.count;
-  for(let i=0;i<count;i++){
-   const n=source?source[i]:i,x=attr.getX(n),y=attr.getY(n),z=attr.getZ(n);
-   const key=[x,y,z].map(v=>Math.round(v*100000)).join(',');
-   let id=lookup.get(key);
-   if(id===undefined){id=vertices.length/3;lookup.set(key,id);vertices.push(x,y,z)}
-   indices.push(id)
-  }
-  if(indices.length<12||indices.length/3>120000)throw Error('Union is empty or too detailed');
-  const geometry=new THREE.BufferGeometry();
-  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);
-  geometry.computeVertexNormals();geometry.computeBoundingSphere();
-  const merged=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:0xc29a7b,roughness:.95,metalness:0}));
-  merged.userData.shapeType='merged';merged.userData.label='Fused '+layers.length+' shapes';
-  for(const item of layers){scene.remove(item);item.geometry.dispose();item.material.dispose()}
-  layers=[merged];scene.add(merged);history=[];selectLayer(0);queueSave();
-  status.textContent='Fused · '+(indices.length/3).toLocaleString()+' polys · Backup saved';
- }catch(err){status.textContent='Merge failed: '+(err?.message||'geometry issue')+' · Layers kept';console.error('Boolean union failed',err)}
- finally{button.disabled=false;button.textContent='▣ Fuse Layers'}
-}
-function removeLayer(i){if(!layers[i])return;const removed=layers[i];scene.remove(removed);layers.splice(i,1);removed.geometry.dispose();removed.material.dispose();history=[];dragAxis=null;if(!layers.length){addShape('sphere',true);status.textContent='Last shape removed · New sphere created'}else{selectLayer(Math.min(i,layers.length-1));status.textContent='Shape removed'}queueSave();render()}
-function updateLayers(){const el=document.querySelector('#layers');el.replaceChildren();layers.forEach((item,i)=>{const wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-shrink:0;align-items:stretch;gap:2px';const b=document.createElement('button');b.textContent=item.userData.label||'Layer '+(i+1);b.style.cssText='white-space:nowrap;padding:9px 12px';b.classList.toggle('active',item===mesh);b.onclick=()=>selectLayer(i);const del=document.createElement('button');del.textContent='×';del.title='Remove '+(item.userData.label||'shape');del.setAttribute('aria-label',del.title);del.style.cssText='padding:6px 10px;color:#ff8b8b;font-size:19px';del.onclick=()=>removeLayer(i);wrap.append(b,del);el.append(wrap)})}
-function sphere(){addShape('sphere',true);history=[];base=mesh.geometry.attributes.position.array.slice();render()}
+const $=s=>document.querySelector(s),stage=$('#stage'),status=$('#status'),scene=new THREE.Scene();
+scene.background=new THREE.Color('#101116');
+const camera=new THREE.PerspectiveCamera(42,1,.05,150),target=new THREE.Vector3(),renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));stage.prepend(renderer.domElement);
+camera.position.set(2,1.3,4.2);camera.lookAt(target);
+scene.add(new THREE.HemisphereLight(0xffffff,0x554438,2.3));
+const sun=new THREE.DirectionalLight(0xffe3c8,2.6);sun.position.set(-3,5,6);scene.add(sun);
+const grid=new THREE.GridHelper(8,16,0x596276,0x343743);grid.position.y=-1.6;scene.add(grid);
+scene.add(new THREE.AxesHelper(2.1));
+const material=()=>new THREE.MeshStandardMaterial({color:0xc69c7b,roughness:.9,metalness:0,side:THREE.DoubleSide});
+let layers=[],selected=null,tool='add',mirror=false,brush=.35,strength=.35,undoStack=[],saveTimer=null;
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(),v=new THREE.Vector3(),w=new THREE.Vector3();
+const MAX_FACES=60000,KEY='mini-clay-v2-current',BACKUP='mini-clay-v2-before-fuse';
+function message(s){status.textContent=s}
 function render(){renderer.render(scene,camera)}
-function orbitWorld(dx,dy){const offset=camera.position.clone().sub(target),spherical=new THREE.Spherical().setFromVector3(offset);spherical.theta-=THREE.MathUtils.clamp(dx,-35,35)*.006;spherical.phi=THREE.MathUtils.clamp(spherical.phi-THREE.MathUtils.clamp(dy,-35,35)*.006,.12,Math.PI-.12);camera.up.set(0,1,0);camera.position.copy(target).add(new THREE.Vector3().setFromSpherical(spherical));camera.lookAt(target)}
-function axisAt(x,y){const rect=canvas.getBoundingClientRect();pointer.set((x-rect.left)/rect.width*2-1,1-(y-rect.top)/rect.height*2);raycaster.setFromCamera(pointer,camera);return raycaster.intersectObjects(axes.children,true).find(h=>h.object.userData.axis)?.object.userData.axis||null}
-function translateAxis(axis,dx,dy){const dir=new THREE.Vector3(axis==='x'?1:0,axis==='y'?1:0,axis==='z'?1:0);const origin=gizmo.position.clone().project(camera);const endpoint=gizmo.position.clone().add(dir).project(camera);const rect=canvas.getBoundingClientRect();let vx=(endpoint.x-origin.x)*rect.width/2,vy=-(endpoint.y-origin.y)*rect.height/2;const len=Math.hypot(vx,vy);if(len<8){mesh.position[axis]+=-dy*.012}else{mesh.position[axis]+=(dx*vx+dy*vy)/(len*len)}syncGizmo();render();queueSave()}
-function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>store('mini-clay-current'),900)}
-function layerData(item){const g=item.geometry;return {positions:Array.from(g.attributes.position.array),indices:g.index?Array.from(g.index.array):null,rotation:item.rotation.toArray().slice(0,3),translation:item.position.toArray(),scale:item.scale.toArray(),type:item.userData.shapeType,label:item.userData.label}}
-function store(key){try{localStorage.setItem(key,JSON.stringify({layers:layers.map(layerData),selected:layers.indexOf(mesh),saved:Date.now()}));status.textContent='Saved'}catch(err){status.textContent='Storage full'}}
-function restore(key){try{const raw=localStorage.getItem(key);if(!raw)return false;const data=JSON.parse(raw);const entries=data.layers||[data];if(!entries.length||entries.length>24)return false;const rebuilt=[];for(const entry of entries){if(!Array.isArray(entry.positions)||entry.positions.length>600000||entry.positions.length%3)return false;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(entry.positions,3));if(entry.indices)g.setIndex(entry.indices);g.computeVertexNormals();g.computeBoundingSphere();const item=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0xc29a7b,roughness:.95}));item.rotation.set(...(entry.rotation||[0,0,0]));item.position.fromArray(entry.translation||[0,0,0]);item.scale.fromArray(entry.scale||[1,1,1]);item.userData.shapeType=entry.type||'sphere';item.userData.label=entry.label||'Layer '+(rebuilt.length+1);rebuilt.push(item)}for(const item of layers){scene.remove(item);item.geometry.dispose()}layers=rebuilt;for(const item of layers)scene.add(item);selectLayer(Math.max(0,Math.min(layers.length-1,data.selected||0)));history=[];return true}catch(err){status.textContent='Could not load';return false}}
-function listProjects(){const panel=document.querySelector('#projects');panel.replaceChildren();const keys=Object.keys(localStorage).filter(k=>k.startsWith('mini-clay-project-')).sort().reverse();for(const key of keys){const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;margin:5px 0';const name=document.createElement('button');name.style.flex='1';name.textContent=new Date(Number(key.split('-').pop())).toLocaleString();name.onclick=()=>{restore(key);store('mini-clay-current');panel.hidden=true};const del=document.createElement('button');del.textContent='Delete';del.onclick=()=>{if(confirm('Delete this saved sculpture?')){localStorage.removeItem(key);listProjects()}};row.append(name,del);panel.append(row)}if(!keys.length)panel.textContent='No saved projects yet.'}
-function resize(){const rect=stage.getBoundingClientRect();const w=Math.max(1,rect.width),h=Math.max(1,rect.height);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);if(mesh&&target.lengthSq()===0){camera.position.z=Math.max(camera.position.z,fitDistance())}render()}
-new ResizeObserver(resize).observe(stage);sphere();resize();center();if(!restore('mini-clay-current'))status.textContent='Ready';
-const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),local=new THREE.Vector3();
-function hit(x,y){const rect=renderer.domElement.getBoundingClientRect();pointer.set(((x-rect.left)/rect.width)*2-1,1-((y-rect.top)/rect.height)*2);raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObject(mesh);if(!hits.length)return null;return mesh.worldToLocal(hits[0].point.clone())}
-function sculpt(x,y){
-const point=hit(x,y);if(!point)return;
-
-const geo=mesh.geometry,attr=geo.attributes.position,radius=.08+brush*.5,intensity=(.002+strength*.012)*.5;
-let smoothTargets=null;
-if(tool==='smooth'){
- // Smooth welded positions as a unit, so UV seams and cap boundaries cannot split.
- const groups=new Map(),groupOf=new Array(attr.count),vertices=[];
- for(let i=0;i<attr.count;i++){const x=attr.getX(i),y=attr.getY(i),z=attr.getZ(i),key=[x,y,z].map(v=>Math.round(v*10000)).join(',');let g=groups.get(key);if(g===undefined){g=vertices.length;groups.set(key,g);vertices.push({ids:[],p:new THREE.Vector3(x,y,z),neighbors:new Set(),normal:new THREE.Vector3()})}vertices[g].ids.push(i);groupOf[i]=g}
- const idx=geo.index,ids=idx?idx.array:null,faces=ids?ids.length/3:attr.count/3,edgeCounts=new Map();const edgeKey=(a,b)=>a<b?a+','+b:b+','+a;
- for(let f=0;f<faces;f++){const a=groupOf[ids?ids[f*3]:f*3],b=groupOf[ids?ids[f*3+1]:f*3+1],c=groupOf[ids?ids[f*3+2]:f*3+2];if(a===b||b===c||a===c)continue;for(const [u,v] of [[a,b],[b,c],[c,a]]){vertices[u].neighbors.add(v);vertices[v].neighbors.add(u);const key=edgeKey(u,v);edgeCounts.set(key,(edgeCounts.get(key)||0)+1)}const A=vertices[a].p,B=vertices[b].p,C=vertices[c].p,n=B.clone().sub(A).cross(C.clone().sub(A));vertices[a].normal.add(n);vertices[b].normal.add(n);vertices[c].normal.add(n)}
- const protectedVertices=new Set();for(const [edge,count] of edgeCounts){if(count!==2){const [a,b]=edge.split(',').map(Number);protectedVertices.add(a);protectedVertices.add(b)}}
- // Protect one additional ring around open / non-manifold CSG seams.
- const seamRing=new Set(protectedVertices);for(const i of protectedVertices)for(const j of vertices[i].neighbors)seamRing.add(j);
- for(const v of vertices)v.normal.normalize();
- const targets=vertices.map((v,i)=>{if(seamRing.has(i)||v.neighbors.size<3)return v.p.clone();const avg=new THREE.Vector3();for(const j of v.neighbors)avg.add(vertices[j].p);avg.multiplyScalar(1/v.neighbors.size);const delta=avg.sub(v.p);const normalShift=v.normal.clone().multiplyScalar(delta.dot(v.normal));return v.p.clone().add(delta.sub(normalShift).multiplyScalar(.12))});
- smoothTargets=groupOf.map(g=>targets[g]);
-}
-for(let i=0;i<attr.count;i++){
- local.fromBufferAttribute(attr,i);const dist=local.distanceTo(point);if(dist>radius&&(!mirrorEnabled||local.distanceTo(new THREE.Vector3(-point.x,point.y,point.z))>radius))continue;
- const mirrored=new THREE.Vector3(-point.x,point.y,point.z);const mirrorDist=mirrorEnabled?local.distanceTo(mirrored):Infinity;const fall=Math.pow(1-Math.min(dist,mirrorDist)/radius,2);
- if(tool==='smooth'){local.lerp(smoothTargets[i],Math.min(.16,fall*strength*.2))}
- else{const outward=local.clone().normalize();local.addScaledVector(outward,(tool==='add'?1:-1)*fall*intensity)}
- attr.setXYZ(i,local.x,local.y,local.z)
-}
-attr.needsUpdate=true;geo.computeVertexNormals();geo.computeBoundingSphere();render();queueSave()
-}
-function postMirror(){
- save();
- const attr=mesh.geometry.attributes.position,cell=.035,buckets=new Map(),source=[];
- const key=(x,y,z)=>[Math.round(x/cell),Math.round(y/cell),Math.round(z/cell)].join(',');
- for(let i=0;i<attr.count;i++){const x=attr.getX(i),y=attr.getY(i),z=attr.getZ(i);if(x<=0){const entry={x,y,z};source.push(entry);const k=key(x,y,z);if(!buckets.has(k))buckets.set(k,[]);buckets.get(k).push(entry)}}
- if(!source.length)return;
- const changes=[];
- for(let i=0;i<attr.count;i++){
-  const x=attr.getX(i),y=attr.getY(i),z=attr.getZ(i);if(x<=0)continue;
-  let best=null,dist=Infinity;
-  const ix=Math.round(-x/cell),iy=Math.round(y/cell),iz=Math.round(z/cell);
-  for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++)for(let c=-2;c<=2;c++){
-   const bucket=buckets.get([ix+a,iy+b,iz+c].join(','));if(!bucket)continue;
-   for(const p of bucket){const d=(p.x+x)**2+(p.y-y)**2+(p.z-z)**2;if(d<dist){dist=d;best=p}}
-  }
-  if(best&&dist<.09**2)changes.push([i,-best.x,best.y,best.z]);
- }
- for(const [i,x,y,z] of changes)attr.setXYZ(i,x,y,z);
- attr.needsUpdate=true;mesh.geometry.computeVertexNormals();mesh.geometry.computeBoundingSphere();render();queueSave();
- status.textContent='Mirrored '+changes.length+' vertices';
-}
-function updateCount(){const g=mesh.geometry;status.textContent=(g.index?g.index.count/3:g.attributes.position.count/3).toLocaleString()+' polys · '+layers.length+' layers'}
-function smartRemesh(){
- if(!mesh)return;
- const original=mesh.geometry,attr=original.attributes.position,idx=original.index;
- if(!idx){status.textContent='Remesh needs indexed triangles';return}
- const weld=new Map(),vertices=[],remap=[];
- for(let i=0;i<attr.count;i++){
-  const x=attr.getX(i),y=attr.getY(i),z=attr.getZ(i),key=[x,y,z].map(v=>Math.round(v*100000)).join(',');
-  let id=weld.get(key);if(id===undefined){id=vertices.length/3;vertices.push(x,y,z);weld.set(key,id)}remap.push(id)
- }
- let faces=[];const unique=new Set();
- for(let i=0;i<idx.count;i+=3){
-  const a=remap[idx.getX(i)],b=remap[idx.getX(i+1)],c=remap[idx.getX(i+2)];
-  if(a===b||b===c||c===a)continue;
-  const k=[a,b,c].sort((x,y)=>x-y).join(',');
-  if(!unique.has(k)){unique.add(k);faces.push([a,b,c])}
- }
- const edgeKey=(a,b)=>a<b?a+','+b:b+','+a;
- const edges=new Map(),normals=[],vertexFaces=Array.from({length:vertices.length/3},()=>[]);
- const getPoint=i=>new THREE.Vector3(vertices[3*i],vertices[3*i+1],vertices[3*i+2]);
- for(let i=0;i<faces.length;i++){
-  const [a,b,c]=faces[i],n=getPoint(b).sub(getPoint(a)).cross(getPoint(c).sub(getPoint(a))).normalize();normals.push(n);
-  for(const v of [a,b,c])vertexFaces[v].push(i);
-  for(const [u,v] of [[a,b],[b,c],[c,a]]){const key=edgeKey(u,v);if(!edges.has(key))edges.set(key,{a:Math.min(u,v),b:Math.max(u,v),faces:[]});edges.get(key).faces.push(i)}
- }
- const irregular=[...edges.values()].filter(e=>e.faces.length!==2);
- if(irregular.length){status.textContent='Remesh stopped: '+irregular.length+' open/non-manifold edges. Repair fusion first';return}
- const normalsByVertex=vertexFaces.map(fs=>{const n=new THREE.Vector3();for(const f of fs)n.add(normals[f]);return n.normalize()});
- const curvature=[...edges.values()].map(e=>({e,angle:Math.acos(THREE.MathUtils.clamp(normals[e.faces[0]].dot(normals[e.faces[1]]),-1,1)),length:getPoint(e.a).distanceTo(getPoint(e.b))}));
- const base=THREE.MathUtils.clamp(.20+Math.sqrt(faces.length/48000)*.07,.18,.34);
- const split=new Set();
- for(const {e,angle,length} of curvature){const desired=base*(angle>.55?.75:angle>.22?.9:1);if(length>desired*1.55)split.add(edgeKey(e.a,e.b))}
- if(!split.size){status.textContent='Smart Remesh: topology healthy, detail sufficient';return}
- const midpoints=new Map(),out=[];
- const midpoint=(a,b)=>{const key=edgeKey(a,b);if(midpoints.has(key))return midpoints.get(key);const A=getPoint(a),B=getPoint(b),id=vertices.length/3;vertices.push((A.x+B.x)/2,(A.y+B.y)/2,(A.z+B.z)/2);midpoints.set(key,id);return id};
- for(const [a,b,c] of faces){
-  const ab=split.has(edgeKey(a,b))?midpoint(a,b):-1,bc=split.has(edgeKey(b,c))?midpoint(b,c):-1,ca=split.has(edgeKey(c,a))?midpoint(c,a):-1;
-  const n=(ab>=0)+(bc>=0)+(ca>=0);
-  if(n===0)out.push(a,b,c);
-  else if(n===1){if(ab>=0)out.push(a,ab,c,ab,b,c);else if(bc>=0)out.push(b,bc,a,bc,c,a);else out.push(c,ca,b,ca,a,b)}
-  else if(n===2){if(ab<0)out.push(c,ca,bc,ca,a,b,ca,b,bc);else if(bc<0)out.push(a,ab,ca,ab,b,c,ab,c,ca);else out.push(b,bc,ab,bc,c,a,bc,a,ab)}
-  else out.push(a,ab,ca,ab,b,bc,ca,bc,c,ab,bc,ca)
- }
- if(out.length/3>48000){status.textContent='Smart Remesh: 48k polygon safety limit';return}
- // Topology-safe refinement: existing vertices stay fixed, all adjacent faces share edge midpoints.
- // Avoid relaxation here: it can shrink forms or reopen fragile Boolean seams.
- const next=new THREE.BufferGeometry();
- next.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));next.setIndex(out);
- next.computeVertexNormals();next.computeBoundingSphere();
- const checks=new Map();for(let i=0;i<out.length;i+=3)for(const [a,b] of [[out[i],out[i+1]],[out[i+1],out[i+2]],[out[i+2],out[i]]]){const key=edgeKey(a,b);checks.set(key,(checks.get(key)||0)+1)}
- if([...checks.values()].some(n=>n!==2)){next.dispose();status.textContent='Remesh canceled: topology validation failed';return}
- save();mesh.geometry=next;original.dispose();updateCount();render();queueSave();
- status.textContent='Smart Remesh · '+faces.length+' → '+out.length/3+' triangles · manifold checked'
-}
-function refine(point){
-const geo=mesh.geometry,attr=geo.attributes.position,idx=geo.index;if(!idx)return;
-const maxTris=48000;
-if(idx.count/3>=maxTris)return;
-// Weld coincident sphere seam vertices so subdivisions share the same edges.
-const verts=[],weld=new Map(),remap=new Array(attr.count);
-for(let i=0;i<attr.count;i++){
- const x=attr.getX(i),y=attr.getY(i),z=attr.getZ(i);
- const key=[x,y,z].map(v=>Math.round(v*100000)).join(',');
- let id=weld.get(key);
- if(id===undefined){id=verts.length/3;verts.push(x,y,z);weld.set(key,id)}
- remap[i]=id;
-}
-const ids=Array.from(idx.array,v=>remap[v]),splitEdges=new Set(),radius=.08+brush*.5,detail=THREE.MathUtils.clamp(.7-idx.count/150000,.2,.7),threshold=(.13-detail*.095)*(tool==='smooth'?1.18:tool==='carve'?.86:1);
-const edgeKey=(a,b)=>a<b?a+','+b:b+','+a;
-const length=(a,b)=>Math.hypot(verts[a*3]-verts[b*3],verts[a*3+1]-verts[b*3+1],verts[a*3+2]-verts[b*3+2]);
-let marked=0;
-for(let i=0;i<ids.length;i+=3){
- const a=ids[i],b=ids[i+1],c=ids[i+2];
- const x=(verts[a*3]+verts[b*3]+verts[c*3])/3,y=(verts[a*3+1]+verts[b*3+1]+verts[c*3+1])/3,z=(verts[a*3+2]+verts[b*3+2]+verts[c*3+2])/3;
- if(Math.hypot(x-point.x,y-point.y,z-point.z)>radius*(tool==='carve'?1.65:1.3))continue;
- for(const [u,v] of [[a,b],[b,c],[c,a]])if(length(u,v)>threshold)splitEdges.add(edgeKey(u,v));
- marked++;
-}
-if(!splitEdges.size)return;
-const mid=new Map(),newIndices=[];
-function midpoint(a,b){const key=edgeKey(a,b);if(mid.has(key))return mid.get(key);const id=verts.length/3;for(let k=0;k<3;k++)verts.push((verts[a*3+k]+verts[b*3+k])*.5);mid.set(key,id);return id}
-for(let i=0;i<ids.length;i+=3){
- const [a,b,c]=ids.slice(i,i+3);
- const ab=splitEdges.has(edgeKey(a,b))?midpoint(a,b):-1;
- const bc=splitEdges.has(edgeKey(b,c))?midpoint(b,c):-1;
- const ca=splitEdges.has(edgeKey(c,a))?midpoint(c,a):-1;
- // Split using a triangle interior vertex: avoids collinear and overlapping fan triangles.
- if(ab<0&&bc<0&&ca<0){newIndices.push(a,b,c);continue}
- const center=verts.length/3;
- for(let k=0;k<3;k++)verts.push((verts[a*3+k]+verts[b*3+k]+verts[c*3+k])/3);
- const ring=[a];if(ab>=0)ring.push(ab);ring.push(b);if(bc>=0)ring.push(bc);ring.push(c);if(ca>=0)ring.push(ca);
- for(let j=0;j<ring.length;j++)newIndices.push(center,ring[j],ring[(j+1)%ring.length]);
-}
-if(newIndices.length/3>maxTris)return;
-const next=new THREE.BufferGeometry();
-next.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
-next.setIndex(newIndices);next.computeVertexNormals();next.computeBoundingSphere();
-mesh.geometry=next;geo.dispose();updateCount();queueSave();
-}
-function save(){history.push({positions:mesh.geometry.attributes.position.array.slice(),indices:mesh.geometry.index?.array.slice(),rotation:mesh.quaternion.toArray(),scale:mesh.scale.toArray(),translation:mesh.position.toArray()});if(history.length>10)history.shift()}
-const active=new Map();let last=null,prevPinch=0,prevMid=null,prevAngle=null,gestureMode=null,gestureStart=null;
+function resize(){const r=stage.getBoundingClientRect();camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);render()}
+new ResizeObserver(resize).observe(stage);
+function geometry(type){let g=type==='box'?new THREE.BoxGeometry(1.35,1.35,1.35,12,12,12):type==='cylinder'?new THREE.CylinderGeometry(.75,.75,1.5,48,14):type==='torus'?new THREE.TorusGeometry(.65,.25,24,72):new THREE.SphereGeometry(.9,64,40);return weldGeometry(g)}
+function weldGeometry(g){const a=g.attributes.position,ids=g.index,verts=[],indices=[],map=new Map();for(let i=0;i<(ids?ids.count:a.count);i++){const n=ids?ids.getX(i):i,x=a.getX(n),y=a.getY(n),z=a.getZ(n),key=[x,y,z].map(q=>Math.round(q*1e5)).join(',');let k=map.get(key);if(k===undefined){k=verts.length/3;verts.push(x,y,z);map.set(key,k)}indices.push(k)}const out=new THREE.BufferGeometry();out.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));out.setIndex(indices);out.computeVertexNormals();out.computeBoundingSphere();g.dispose();return out}
+function add(type='sphere'){if(layers.length>=12){message('12 layer limit');return}const obj=new THREE.Mesh(geometry(type),material());obj.userData.type=type;obj.userData.label=type[0].toUpperCase()+type.slice(1)+' '+(layers.length+1);if(layers.length)obj.position.x=.28;scene.add(obj);layers.push(obj);select(obj);scheduleSave();message('Shape added')}
+function select(obj){selected=obj;drawLayers();drawGizmo();render()}
+function drawLayers(){const root=$('#layers');root.replaceChildren();layers.forEach((obj,i)=>{const wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:2px;flex:none';const btn=document.createElement('button');btn.textContent=obj.userData.label||'Layer '+(i+1);btn.classList.toggle('active',obj===selected);btn.onclick=()=>select(obj);const del=document.createElement('button');del.textContent='×';del.setAttribute('aria-label','Remove layer');del.onclick=()=>{checkpoint();scene.remove(obj);layers.splice(i,1);obj.geometry.dispose();obj.material.dispose();if(!layers.length)add();else select(layers[Math.min(i,layers.length-1)]);scheduleSave()};wrap.append(btn,del);root.append(wrap)})}
+const gizmo=new THREE.Group();scene.add(gizmo);let gizmoMode='move';
+const colors={x:0xff6969,y:0x6fdda0,z:0x74adff};
+for(const axis of ['x','y','z']){const direction=new THREE.Vector3(axis==='x'?1:0,axis==='y'?1:0,axis==='z'?1:0);const arrow=new THREE.ArrowHelper(direction,new THREE.Vector3(),1.15,colors[axis],.18,.1);arrow.userData.kind='move';gizmo.add(arrow);const ring=new THREE.Mesh(new THREE.TorusGeometry(.9,.012,8,64),new THREE.MeshBasicMaterial({color:colors[axis],transparent:true,opacity:.8}));if(axis==='x')ring.rotation.y=Math.PI/2;if(axis==='y')ring.rotation.x=Math.PI/2;ring.userData.kind='rotate';gizmo.add(ring);const box=new THREE.Mesh(new THREE.BoxGeometry(.12,.12,.12),new THREE.MeshBasicMaterial({color:colors[axis]}));box.position.copy(direction.multiplyScalar(1.05));box.userData.kind='scale';gizmo.add(box)}
+function drawGizmo(){gizmo.visible=tool==='move'&&!!selected;if(!selected)return;selected.updateMatrixWorld(true);selected.getWorldPosition(gizmo.position);gizmo.scale.setScalar(Math.max(.35,camera.position.distanceTo(gizmo.position)*.25));gizmo.children.forEach(c=>c.visible=c.userData.kind===gizmoMode)}
+function setGizmo(mode){gizmoMode=mode;drawGizmo();render()}
+function capture(){return {layers:layers.map(o=>({type:o.userData.type,label:o.userData.label,positions:Array.from(o.geometry.attributes.position.array),indices:o.geometry.index?Array.from(o.geometry.index.array):null,position:o.position.toArray(),quaternion:o.quaternion.toArray(),scale:o.scale.toArray()})),selected:Math.max(0,layers.indexOf(selected))}}
+function checkpoint(){undoStack.push(capture());if(undoStack.length>12)undoStack.shift()}
+function restoreData(data){if(!data?.layers?.length||data.layers.length>12)throw Error('Invalid project');const next=[];for(const entry of data.layers){if(!entry.positions||entry.positions.length>500000||entry.positions.length%3)throw Error('Project too large');const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(entry.positions,3));if(entry.indices)g.setIndex(entry.indices);g.computeVertexNormals();g.computeBoundingSphere();const obj=new THREE.Mesh(g,material());obj.userData.type=entry.type;obj.userData.label=entry.label;obj.position.fromArray(entry.position||[0,0,0]);obj.quaternion.fromArray(entry.quaternion||[0,0,0,1]);obj.scale.fromArray(entry.scale||[1,1,1]);next.push(obj)}for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=next;for(const o of next)scene.add(o);select(next[Math.min(next.length-1,data.selected||0)]);render()}
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(capture()))}catch(e){message('Storage full')}},700)}
+function saveProject(){try{const k='mini-clay-project-'+Date.now();localStorage.setItem(k,JSON.stringify(capture()));message('Project saved')}catch(e){message('Could not save project')}}
+function listProjects(){const el=$('#projects');el.hidden=!el.hidden;if(el.hidden)return;el.replaceChildren();const keys=Object.keys(localStorage).filter(k=>k.startsWith('mini-clay-project-')).sort().reverse();for(const k of keys){const row=document.createElement('div');row.className='row';const b=document.createElement('button');b.textContent=new Date(Number(k.split('-').pop())).toLocaleString();b.onclick=()=>{try{checkpoint();restoreData(JSON.parse(localStorage.getItem(k)));scheduleSave();el.hidden=true}catch(e){message(e.message)}};const d=document.createElement('button');d.textContent='Delete';d.onclick=()=>{if(confirm('Delete this project?')){localStorage.removeItem(k);listProjects();listProjects()}};row.append(b,d);el.append(row)}if(!keys.length)el.textContent='No saved projects'}
+function hit(x,y){if(!selected)return null;const r=renderer.domElement.getBoundingClientRect();pointer.set((x-r.left)/r.width*2-1,-(y-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);const hits=ray.intersectObject(selected);return hits.length?selected.worldToLocal(hits[0].point.clone()):null}
+function topology(g){const a=g.attributes.position,ix=g.index;if(!ix)return null;const edges=new Map(),neighbors=Array.from({length:a.count},()=>new Set()),faces=[];const key=(u,v)=>u<v?u+','+v:v+','+u;for(let i=0;i<ix.count;i+=3){const f=[ix.getX(i),ix.getX(i+1),ix.getX(i+2)];faces.push(f);for(const [u,v] of [[f[0],f[1]],[f[1],f[2]],[f[2],f[0]]]){neighbors[u].add(v);neighbors[v].add(u);const k=key(u,v);let e=edges.get(k);if(!e){e={u,v,faces:[]};edges.set(k,e)}e.faces.push(faces.length-1)}}return {edges,neighbors,faces,key,closed:[...edges.values()].every(e=>e.faces.length===2)}}
+function sculpt(x,y){const p=hit(x,y);if(!p)return;const g=selected.geometry,a=g.attributes.position,top=topology(g),radius=.08+brush*.5;const normals=g.attributes.normal;const old=Float32Array.from(a.array),dest=new Float32Array(old);const points=[p];if(mirror)points.push(new THREE.Vector3(-p.x,p.y,p.z));const falloff=i=>{const pos=new THREE.Vector3(old[i*3],old[i*3+1],old[i*3+2]);let d=Infinity;for(const center of points)d=Math.min(d,pos.distanceTo(center));return d>=radius?0:Math.pow(1-d/radius,2)};
+let protectedSet=new Set();if(top&&tool==='smooth'){for(const e of top.edges.values())if(e.faces.length!==2){protectedSet.add(e.u);protectedSet.add(e.v)}const ring=new Set(protectedSet);for(const i of protectedSet)for(const j of top.neighbors[i])ring.add(j);protectedSet=ring}
+for(let i=0;i<a.count;i++){const f=falloff(i);if(!f)continue;const k=i*3;if(tool==='smooth'){if(!top||protectedSet.has(i)||top.neighbors[i].size<3)continue;const avg=new THREE.Vector3();for(const j of top.neighbors[i])avg.add(new THREE.Vector3(old[j*3],old[j*3+1],old[j*3+2]));avg.multiplyScalar(1/top.neighbors[i].size);const delta=avg.sub(new THREE.Vector3(old[k],old[k+1],old[k+2]));const n=new THREE.Vector3(normals.getX(i),normals.getY(i),normals.getZ(i));delta.addScaledVector(n,-delta.dot(n));for(let j=0;j<3;j++)dest[k+j]+=delta.getComponent(j)*f*strength*.055}else{const sign=tool==='add'?1:-1;const n=new THREE.Vector3(normals.getX(i),normals.getY(i),normals.getZ(i)).normalize();for(let j=0;j<3;j++)dest[k+j]+=n.getComponent(j)*sign*f*(.0015+strength*.006)}}a.array.set(dest);a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();render();scheduleSave()}
+function remesh(){if(!selected)return;const g=selected.geometry,t=topology(g);if(!t||!t.closed){message('Remesh stopped: repair open edges first');return}const a=g.attributes.position,verts=Array.from(a.array),faces=t.faces,split=new Set(),mid=new Map(),out=[];const pt=i=>new THREE.Vector3(verts[i*3],verts[i*3+1],verts[i*3+2]);const base=THREE.MathUtils.clamp(.22+Math.sqrt(faces.length/50000)*.07,.2,.34);const normals=faces.map(([a,b,c])=>pt(b).sub(pt(a)).cross(pt(c).sub(pt(a)).normalize());for(const [k,e] of t.edges){const len=pt(e.u).distanceTo(pt(e.v)),angle=Math.acos(THREE.MathUtils.clamp(normals[e.faces[0]].dot(normals[e.faces[1]]),-1,1));if(len>base*(angle>.4?1.15:1.5))split.add(k)}
+if(!split.size){message('Detail already sufficient');return}
+function midpoint(u,v){const k=t.key(u,v);if(mid.has(k))return mid.get(k);const A=pt(u),B=pt(v),id=verts.length/3;verts.push((A.x+B.x)/2,(A.y+B.y)/2,(A.z+B.z)/2);mid.set(k,id);return id}
+for(const [a,b,c] of faces){const ab=split.has(t.key(a,b))?midpoint(a,b):-1,bc=split.has(t.key(b,c))?midpoint(b,c):-1,ca=split.has(t.key(c,a))?midpoint(c,a):-1;const n=(ab>=0)+(bc>=0)+(ca>=0);if(!n)out.push(a,b,c);else if(n===1){if(ab>=0)out.push(a,ab,c,ab,b,c);else if(bc>=0)out.push(b,bc,a,bc,c,a);else out.push(c,ca,b,ca,a,b)}else if(n===2){if(ab<0)out.push(c,ca,bc,ca,a,b,ca,b,bc);else if(bc<0)out.push(a,ab,ca,ab,b,c,ab,c,ca);else out.push(b,bc,ab,bc,c,a,bc,a,ab)}else out.push(a,ab,ca,ab,b,bc,ca,bc,c,ab,bc,ca)}
+if(out.length/3>MAX_FACES){message('Remesh canceled: polygon limit');return}const next=new THREE.BufferGeometry();next.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));next.setIndex(out);if(!topology(next).closed){next.dispose();message('Remesh canceled: topology check');return}next.computeVertexNormals();next.computeBoundingSphere();checkpoint();selected.geometry=next;g.dispose();scheduleSave();render();message('Remeshed: '+out.length/3+' triangles')}
+async function fuse(){if(layers.length<2){message('Add another shape first');return}const button=$('#merge');button.disabled=true;message('Fusing…');try{localStorage.setItem(BACKUP,JSON.stringify(capture()));const {Evaluator,Brush,ADDITION}=await import('https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.170.0');const evaluator=new Evaluator();evaluator.useGroups=false;evaluator.attributes=['position','normal'];let result=null;for(const obj of layers){obj.updateMatrixWorld(true);const g=obj.geometry.clone();g.applyMatrix4(obj.matrixWorld);g.computeVertexNormals();const operand=new Brush(g,material());operand.updateMatrixWorld();if(!result){result=operand;continue}const next=evaluator.evaluate(result,operand,ADDITION);result.geometry.dispose();operand.geometry.dispose();result=next}
+const joined=weldGeometry(result.geometry.clone());const t=topology(joined);if(!t||!t.closed){joined.dispose();throw Error('Union has open edges; original shapes preserved')}if(joined.index.count/3>MAX_FACES){joined.dispose();throw Error('Too many triangles')}checkpoint();const obj=new THREE.Mesh(joined,material());obj.userData.type='merged';obj.userData.label='Fused sculpture';for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=[obj];scene.add(obj);select(obj);scheduleSave();message('Fusion complete · backup saved')}catch(e){message('Fuse failed: '+e.message);console.error(e)}finally{button.disabled=false}}
+function postMirror(){if(!selected)return;checkpoint();const a=selected.geometry.attributes.position,pts=Array.from({length:a.count},(_,i)=>new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i)));for(let i=0;i<a.count;i++){const p=pts[i];if(p.x>=0)continue;let best=Infinity,match=null;for(const q of pts){if(q.x<0)continue;const d=(q.x+p.x)**2+(q.y-p.y)**2+(q.z-p.z)**2;if(d<best){best=d;match=q}}if(match&&best<.015){a.setXYZ(i,-match.x,match.y,match.z)}}a.needsUpdate=true;selected.geometry.computeVertexNormals();render();scheduleSave()}
+function center(){target.set(0,0,0);camera.position.set(2,1.3,4.2);camera.lookAt(target);drawGizmo();render()}
+const touches=new Map();let previous=null,gesture=null,started=false;
 const canvas=renderer.domElement;
-canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);active.set(e.pointerId,{x:e.clientX,y:e.clientY});last={x:e.clientX,y:e.clientY};if(active.size>=2){prevPinch=0;prevMid=null;prevAngle=null;gestureMode=null;gestureStart=null}if(active.size===1&&tool==='translate'){setGizmoMode('move');dragAxis=axisAt(e.clientX,e.clientY)}if(active.size===1&&['add','carve','smooth'].includes(tool)){save();sculpt(e.clientX,e.clientY)}});
-canvas.addEventListener('pointermove',e=>{if(!active.has(e.pointerId))return;e.preventDefault();const old=active.get(e.pointerId);active.set(e.pointerId,{x:e.clientX,y:e.clientY});if(active.size>=3){if(tool==='translate')setGizmoMode('move');const p=[...active.values()];const mid={x:p.reduce((sum,v)=>sum+v.x,0)/p.length,y:p.reduce((sum,v)=>sum+v.y,0)/p.length};if(prevMid){const distance=camera.position.distanceTo(target),factor=2*distance*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/renderer.domElement.getBoundingClientRect().height;const dx=(mid.x-prevMid.x)*factor,dy=-(mid.y-prevMid.y)*factor;const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1),shift=right.multiplyScalar(-dx).add(up.multiplyScalar(-dy));camera.position.add(shift);target.add(shift);camera.lookAt(target)}prevMid=mid;prevPinch=0;render();return}if(active.size===2){const p=[...active.values()],dist=Math.max(1,Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)),mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2},angle=Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x);
-if(tool==='translate'){
- if(!gestureStart){gestureStart={dist,mid,angle};prevPinch=dist;prevMid=mid;prevAngle=angle;return}
- if(!gestureMode){const scaleMotion=Math.abs(Math.log(dist/gestureStart.dist))*Math.max(90,gestureStart.dist),rotateMotion=Math.hypot(mid.x-gestureStart.mid.x,mid.y-gestureStart.mid.y)+Math.abs(Math.atan2(Math.sin(angle-gestureStart.angle),Math.cos(angle-gestureStart.angle)))*75;if(Math.max(scaleMotion,rotateMotion)>11){gestureMode=scaleMotion>rotateMotion*1.25?'scale':'rotate';setGizmoMode(gestureMode);save()}}
- if(gestureMode==='scale'&&prevPinch){const factor=THREE.MathUtils.clamp(dist/prevPinch,.92,1.08);mesh.scale.multiplyScalar(factor);mesh.scale.clampScalar(.12,8);queueSave()}
- if(gestureMode==='rotate'&&prevMid){const dx=THREE.MathUtils.clamp(mid.x-prevMid.x,-25,25),dy=THREE.MathUtils.clamp(mid.y-prevMid.y,-25,25);mesh.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),dx*.008));const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);mesh.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(right,dy*.008));if(prevAngle!==null){const delta=Math.atan2(Math.sin(angle-prevAngle),Math.cos(angle-prevAngle));mesh.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(camera.getWorldDirection(new THREE.Vector3()),delta))}queueSave()}
- prevPinch=dist;prevMid=mid;prevAngle=angle;render();return
-}
-if(prevPinch){const ratio=THREE.MathUtils.clamp(prevPinch/dist,.85,1.15),newDist=THREE.MathUtils.clamp(camera.position.distanceTo(target)*ratio,fitDistance()*.55,18),direction=camera.position.clone().sub(target).normalize();camera.position.copy(target).addScaledVector(direction,newDist)}
-if(prevMid)orbitWorld(mid.x-prevMid.x,mid.y-prevMid.y);camera.lookAt(target);prevPinch=dist;prevMid=mid;prevAngle=angle;render();return}prevPinch=0;prevMid=null;prevAngle=null;if(tool==='translate'){if(dragAxis)translateAxis(dragAxis,e.clientX-old.x,e.clientY-old.y)}else if(['add','carve','smooth'].includes(tool)){const dx=e.clientX-old.x,dy=e.clientY-old.y,n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/6));for(let i=1;i<=n;i++)sculpt(old.x+dx*i/n,old.y+dy*i/n)}});
-function end(e){active.delete(e.pointerId);gestureMode=null;gestureStart=null;if(active.size===0&&tool==='translate')setGizmoMode('move');if(active.size===0)dragAxis=null;prevPinch=0;prevMid=null;prevAngle=null}canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);canvas.addEventListener('contextmenu',e=>e.preventDefault());
-document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{tool=b.dataset.tool;setGizmoMode('move');render();document.querySelectorAll('[data-tool]').forEach(v=>v.classList.toggle('active',v===b));document.querySelector('#hint').textContent=tool==='translate'?'Drag a colored axis to move · Two: orbit world + zoom · Three: pan':'One finger: sculpt · Two: zoom + rotate · Three: pan'}));
-document.getElementById('mirror').onclick=()=>{mirrorEnabled=!mirrorEnabled;const b=document.getElementById('mirror');b.textContent=mirrorEnabled?'⇄ Mirror: On':'⇄ Mirror: Off';b.classList.toggle('active',mirrorEnabled)};
-document.getElementById('postmirror').onclick=()=>postMirror();
-document.getElementById('panelHandle').onclick=()=>{const panel=document.getElementById('panel');const collapsed=panel.classList.toggle('collapsed');document.getElementById('panelHandle').textContent=collapsed?'⌃ Tools · Tap to expand':'⌄ Tools · Tap to collapse';document.getElementById('panelHandle').setAttribute('aria-expanded',String(!collapsed));resize()};
-document.getElementById('merge').onclick=mergeLayers;
-document.getElementById('addshape').onclick=()=>{if(layers.length>=12){status.textContent='12 layer limit';return}save();addShape(document.getElementById('shapeType').value);queueSave()};
-document.getElementById('dyntopo').onclick=()=>smartRemesh();for(const id of ['size','strength'])document.getElementById(id).addEventListener('input',e=>{document.getElementById(id+'val').textContent=e.target.value;if(id==='size')brush=e.target.value/100;else strength=e.target.value/100});
-document.querySelector('#undo').onclick=()=>{const snap=history.pop();if(!snap)return;const old=mesh.geometry;const next=new THREE.BufferGeometry();next.setAttribute('position',new THREE.BufferAttribute(new Float32Array(snap.positions),3));if(snap.indices)next.setIndex(Array.from(snap.indices));next.computeVertexNormals();next.computeBoundingSphere();mesh.geometry=next;old.dispose();if(snap.rotation)mesh.quaternion.fromArray(snap.rotation);if(snap.scale)mesh.scale.fromArray(snap.scale);if(snap.translation)mesh.position.fromArray(snap.translation);syncGizmo();updateCount();render();queueSave()};
-document.querySelector('#save').onclick=()=>{const key='mini-clay-project-'+Date.now();store(key);store('mini-clay-current');listProjects();document.querySelector('#projects').hidden=false};document.querySelector('#load').onclick=()=>{const panel=document.querySelector('#projects');listProjects();panel.hidden=!panel.hidden};document.querySelector('#center').onclick=center;document.querySelector('#reset').onclick=()=>{sphere();center();queueSave()};window.addEventListener('pagehide',()=>{clearTimeout(saveTimer);store('mini-clay-current')});
+function pointEvent(e){return {x:e.clientX,y:e.clientY}}
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);touches.set(e.pointerId,pointEvent(e));previous=null;gesture=null;started=false;if(touches.size===1&&tool!=='move'){checkpoint();sculpt(e.clientX,e.clientY)}});
+canvas.addEventListener('pointermove',e=>{if(!touches.has(e.pointerId))return;e.preventDefault();const before=touches.get(e.pointerId);touches.set(e.pointerId,pointEvent(e));const p=[...touches.values()];if(p.length===1){if(tool!=='move'){sculpt(e.clientX,e.clientY);return}if(!selected)return;if(!started){checkpoint();started=true}const rect=canvas.getBoundingClientRect(),factor=2*camera.position.distanceTo(target)*Math.tan(camera.fov*Math.PI/360)/rect.height;const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);selected.position.addScaledVector(right,(e.clientX-before.x)*factor).addScaledVector(up,-(e.clientY-before.y)*factor);drawGizmo();render();scheduleSave();return}
+const mid={x:p.reduce((s,q)=>s+q.x,0)/p.length,y:p.reduce((s,q)=>s+q.y,0)/p.length};if(p.length>=3){if(previous){const scale=camera.position.distanceTo(target)*.002;const right=new THREE.Vector3().setFromMatrixColumn(camera.matrix,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrix,1);const shift=right.multiplyScalar(-(mid.x-previous.mid.x)*scale).addScaledVector(up,(mid.y-previous.mid.y)*scale);target.add(shift);camera.position.add(shift);camera.lookAt(target)}previous={mid};drawGizmo();render();return}
+const dist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),angle=Math.atan2(p[1].y-p[0].y,p[1].x-p[0].x);
+if(!previous){previous={mid,dist,angle,startDist:dist,startMid:mid};return}
+const dx=mid.x-previous.mid.x,dy=mid.y-previous.mid.y,ratio=dist/Math.max(1,previous.dist);
+if(tool==='move'&&selected){if(!gesture){const pinch=Math.abs(Math.log(dist/previous.startDist))*120,pan=Math.hypot(mid.x-previous.startMid.x,mid.y-previous.startMid.y);if(Math.max(pinch,pan)>9){gesture=pinch>pan*1.2?'scale':'rotate';checkpoint();setGizmo(gesture)}}if(gesture==='scale'){selected.scale.multiplyScalar(THREE.MathUtils.clamp(ratio,.94,1.06));selected.scale.clampScalar(.12,8);scheduleSave()}else if(gesture==='rotate'){selected.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),dx*.008));const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);selected.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(right,dy*.008));scheduleSave()}}else{const offset=camera.position.clone().sub(target),radius=THREE.MathUtils.clamp(offset.length()/THREE.MathUtils.clamp(ratio,.8,1.2),1.2,18),theta=Math.atan2(offset.x,offset.z)-dx*.008,phi=THREE.MathUtils.clamp(Math.acos(THREE.MathUtils.clamp(offset.y/offset.length(),-1,1))+dy*.008,.12,Math.PI-.12);camera.position.set(target.x+radius*Math.sin(phi)*Math.sin(theta),target.y+radius*Math.cos(phi),target.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(target)}
+previous={...previous,mid,dist,angle};drawGizmo();render()});
+function release(e){touches.delete(e.pointerId);previous=null;gesture=null;started=false;if(tool==='move')setGizmo('move')}
+canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
+document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{tool=b.dataset.tool;document.querySelectorAll('[data-tool]').forEach(x=>x.classList.toggle('active',x===b));setGizmo('move');message(tool==='move'?'Move: 1 finger translate · 2 rotate/scale':'Sculpt mode')});
+$('#handle').onclick=()=>{$('#panel').classList.toggle('closed');$('#handle').textContent=$('#panel').classList.contains('closed')?'⌃ Tools · Tap to expand':'⌄ Tools · Tap to collapse'};
+$('#mirror').onclick=()=>{mirror=!mirror;$('#mirror').textContent='⇄ Mirror: '+(mirror?'On':'Off')};
+$('#postmirror').onclick=postMirror;$('#addshape').onclick=()=>add($('#shape').value);$('#merge').onclick=fuse;$('#remesh').onclick=remesh;
+for(const [id,output,set] of [['size','sizeout',x=>brush=x],['strength','strengthout',x=>strength=x]]){$('#'+id).oninput=e=>{const n=Number(e.target.value);set(n/100);$('#'+output).textContent=n}}
+$('#undo').onclick=()=>{if(!undoStack.length){message('Nothing to undo');return}const data=undoStack.pop();restoreData(data);scheduleSave();message('Undone')};
+$('#center').onclick=center;$('#new').onclick=()=>{if(!confirm('Start a new sculpture?'))return;checkpoint();for(const o of layers){scene.remove(o);o.geometry.dispose();o.material.dispose()}layers=[];add('sphere');center()};
+$('#save').onclick=saveProject;$('#projectsbtn').onclick=listProjects;$('#backup').onclick=()=>{const raw=localStorage.getItem(BACKUP);if(!raw){message('No fuse backup available');return}if(confirm('Restore the layers from before your last fusion?')){checkpoint();restoreData(JSON.parse(raw));scheduleSave();message('Fusion backup restored')}};
+try{const raw=localStorage.getItem(KEY)||localStorage.getItem('mini-clay-current');if(raw){const data=JSON.parse(raw);if(data.layers?.length){if(data.layers[0].translation&&!data.layers[0].position){for(const item of data.layers){item.position=item.translation;item.quaternion=new THREE.Quaternion().setFromEuler(new THREE.Euler(...(item.rotation||[0,0,0]))).toArray()}}restoreData(data)}else add()}else add()}catch(e){console.error(e);add();message('New sculpture ready')}
+center();resize();message('Ready · v2.0.0');
 </script></body></html>
