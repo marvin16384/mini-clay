@@ -38,12 +38,23 @@ async function mergeLayers(){
  const button=document.getElementById('merge');button.disabled=true;button.textContent='Fusing shapes…';status.textContent='Building seamless union…';
  try{
   const {Evaluator,Brush,ADDITION}=await import('https://esm.sh/three-bvh-csg@0.0.16?deps=three@0.170.0');
-  const evaluator=new Evaluator();evaluator.useGroups=false;
+  const evaluator=new Evaluator();evaluator.useGroups=false;evaluator.attributes=['position','normal'];
   let combined=null;
   for(const item of layers){
    item.updateMatrixWorld(true);
-   const geometry=item.geometry.clone();geometry.applyMatrix4(item.matrixWorld);
-   if(!geometry.attributes.normal)geometry.computeVertexNormals();
+   // CSG needs one consistent triangle stream. BoxGeometry has six separate material groups.
+   const source=item.geometry.index?item.geometry.toNonIndexed():item.geometry.clone();
+   const geometry=new THREE.BufferGeometry();
+   geometry.setAttribute('position',source.attributes.position.clone());
+   geometry.applyMatrix4(item.matrixWorld);
+   geometry.computeVertexNormals();
+   source.dispose();
+   // A tiny offset avoids exactly coplanar box faces destabilizing the boolean solver.
+   if(combined&&item.userData.shapeType==='box'){
+    const p=geometry.attributes.position;
+    for(let j=0;j<p.count;j++)p.setXYZ(j,p.getX(j)+.00003,p.getY(j)+.00002,p.getZ(j)+.00001);
+    p.needsUpdate=true;geometry.computeVertexNormals();
+   }
    const brush=new Brush(geometry,new THREE.MeshStandardMaterial());
    brush.updateMatrixWorld();
    if(!combined){combined=brush;continue}
@@ -71,7 +82,7 @@ async function mergeLayers(){
   for(const item of layers){scene.remove(item);item.geometry.dispose();item.material.dispose()}
   layers=[merged];scene.add(merged);history=[];selectLayer(0);queueSave();
   status.textContent='Seamless union · '+(indices.length/3).toLocaleString()+' polys';
- }catch(err){status.textContent='Merge failed — original layers kept';console.error('Boolean union failed',err)}
+ }catch(err){status.textContent='Merge failed: '+(err?.message||'geometry issue')+' · Layers kept';console.error('Boolean union failed',err)}
  finally{button.disabled=false;button.textContent='▣ Fuse Layers'}
 }
 function removeLayer(i){if(!layers[i])return;const removed=layers[i];scene.remove(removed);layers.splice(i,1);removed.geometry.dispose();removed.material.dispose();history=[];dragAxis=null;if(!layers.length){addShape('sphere',true);status.textContent='Last shape removed · New sphere created'}else{selectLayer(Math.min(i,layers.length-1));status.textContent='Shape removed'}queueSave();render()}
