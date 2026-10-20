@@ -110,10 +110,13 @@ if(tool==='smooth'){
  // Smooth welded positions as a unit, so UV seams and cap boundaries cannot split.
  const groups=new Map(),groupOf=new Array(attr.count),vertices=[];
  for(let i=0;i<attr.count;i++){const x=attr.getX(i),y=attr.getY(i),z=attr.getZ(i),key=[x,y,z].map(v=>Math.round(v*10000)).join(',');let g=groups.get(key);if(g===undefined){g=vertices.length;groups.set(key,g);vertices.push({ids:[],p:new THREE.Vector3(x,y,z),neighbors:new Set(),normal:new THREE.Vector3()})}vertices[g].ids.push(i);groupOf[i]=g}
- const idx=geo.index,ids=idx?idx.array:null,faces=ids?ids.length/3:attr.count/3;
- for(let f=0;f<faces;f++){const a=groupOf[ids?ids[f*3]:f*3],b=groupOf[ids?ids[f*3+1]:f*3+1],c=groupOf[ids?ids[f*3+2]:f*3+2];if(a===b||b===c||a===c)continue;for(const [u,v] of [[a,b],[b,c],[c,a]]){vertices[u].neighbors.add(v);vertices[v].neighbors.add(u)}const A=vertices[a].p,B=vertices[b].p,C=vertices[c].p,n=B.clone().sub(A).cross(C.clone().sub(A));vertices[a].normal.add(n);vertices[b].normal.add(n);vertices[c].normal.add(n)}
+ const idx=geo.index,ids=idx?idx.array:null,faces=ids?ids.length/3:attr.count/3,edgeCounts=new Map();const edgeKey=(a,b)=>a<b?a+','+b:b+','+a;
+ for(let f=0;f<faces;f++){const a=groupOf[ids?ids[f*3]:f*3],b=groupOf[ids?ids[f*3+1]:f*3+1],c=groupOf[ids?ids[f*3+2]:f*3+2];if(a===b||b===c||a===c)continue;for(const [u,v] of [[a,b],[b,c],[c,a]]){vertices[u].neighbors.add(v);vertices[v].neighbors.add(u);const key=edgeKey(u,v);edgeCounts.set(key,(edgeCounts.get(key)||0)+1)}const A=vertices[a].p,B=vertices[b].p,C=vertices[c].p,n=B.clone().sub(A).cross(C.clone().sub(A));vertices[a].normal.add(n);vertices[b].normal.add(n);vertices[c].normal.add(n)}
+ const protectedVertices=new Set();for(const [edge,count] of edgeCounts){if(count!==2){const [a,b]=edge.split(',').map(Number);protectedVertices.add(a);protectedVertices.add(b)}}
+ // Protect one additional ring around open / non-manifold CSG seams.
+ const seamRing=new Set(protectedVertices);for(const i of protectedVertices)for(const j of vertices[i].neighbors)seamRing.add(j);
  for(const v of vertices)v.normal.normalize();
- const targets=vertices.map(v=>{if(v.neighbors.size<3)return v.p.clone();const avg=new THREE.Vector3();for(const j of v.neighbors)avg.add(vertices[j].p);avg.multiplyScalar(1/v.neighbors.size);const delta=avg.sub(v.p);const normalShift=v.normal.clone().multiplyScalar(delta.dot(v.normal));return v.p.clone().add(delta.sub(normalShift).multiplyScalar(.22))});
+ const targets=vertices.map((v,i)=>{if(seamRing.has(i)||v.neighbors.size<3)return v.p.clone();const avg=new THREE.Vector3();for(const j of v.neighbors)avg.add(vertices[j].p);avg.multiplyScalar(1/v.neighbors.size);const delta=avg.sub(v.p);const normalShift=v.normal.clone().multiplyScalar(delta.dot(v.normal));return v.p.clone().add(delta.sub(normalShift).multiplyScalar(.22))});
  smoothTargets=groupOf.map(g=>targets[g]);
 }
 for(let i=0;i<attr.count;i++){
